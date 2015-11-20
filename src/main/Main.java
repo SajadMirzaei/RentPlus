@@ -63,10 +63,8 @@ public class Main {
 		if (args.length > 1) {
 			getTrueTreesFromMsFile(args[1]);
 			getDistanceMatricesForTrueTrees();
-			positions = getPositionArrayFromMSFile(args[1]);
-		}else{
-			positions = getPositionArrayFromInputFile(args[0]);
 		}
+		positions = getPositionArrayFromInputFile(args[0]);
 		makeDistanceMatricesFast2();
 		makeUPGMATimeTrees2();
 		buildNewRoot();
@@ -355,13 +353,25 @@ public class Main {
 			InputStreamReader reader = new InputStreamReader(fis);
 			BufferedReader br = new BufferedReader(reader);
 			String line = br.readLine();
-			if (line.contains("position")) {
-				String[] positionStrings = line.split(":")[1].substring(1)
-						.split(" ");
-				for (int i = 0; i < positionStrings.length; i++) {
-					positions.add(Integer.valueOf(positionStrings[i]));
+			if (line.matches(".*[2-9].*") || line.contains(".")) {
+				String[] positionStrings = line.split(" ");
+				int maxLength = Integer.MIN_VALUE;
+				if (positionStrings[0].contains(".")) {
+					for (int i = 0; i < positionStrings.length; i++) {
+						if (positionStrings[i].length() > maxLength) {
+							maxLength = positionStrings[i].length();
+						}
+					}
+					for (int i = 0; i < positionStrings.length; i++) {
+						double pos = Double.valueOf(positionStrings[i])*Math.pow(10,(maxLength-2));
+						positions.add((int) pos);
+					}
+				}else{
+					for (int i = 0; i < positionStrings.length; i++) {
+						positions.add(Integer.valueOf(positionStrings[i]));
+					}
 				}
-				TOTAL_SEQ_LENGTH = positions.get(positions.size()-1);
+				TOTAL_SEQ_LENGTH = positions.get(positions.size()-1)-positions.get(0)+1;
 				List<Integer> temPositions = new ArrayList<Integer>();
 				for (int i = 0; i < positions.size(); i++) {
 					if (!indicesToRemove.contains(i)) {
