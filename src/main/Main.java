@@ -548,7 +548,7 @@ public class Main {
 		try {
 			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
 			          new FileOutputStream(inputUrl + ".times")));
-			for (double d : localTreeLengths) {
+			for (double d : timeTreeLengths) {
 				writer.write(String.valueOf(d));
 				writer.newLine();
 			}
