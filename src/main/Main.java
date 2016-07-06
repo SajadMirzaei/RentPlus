@@ -54,6 +54,15 @@ public class Main {
 	private List<Set<Integer>> originalSplits;
 	
 	public Main(String args[]) {
+		if (args[0].equals("-t")) {
+			Util.BRANCH_LENGTH = true;
+			args[0] = args[1];
+			if (args.length > 2) {
+				args[1] = args[2];
+			}else{
+				args[1] = null;
+			}
+		}
 		outputName = args[0];
 		Date startTime = new Date();
 		System.out.println("Start Time: " + startTime);
@@ -67,7 +76,7 @@ public class Main {
 		timeTreeLengths = new double[matrix[0].length];
 		trueTreeLengths = new double[matrix[0].length];
 		localTreeLengths = new double[matrix[0].length];
-		if (args.length > 1) {
+		if (args.length > 1 && args[1] != null) {
 			getTrueTreesFromMsFile(args[1]);
 			getDistanceMatricesForTrueTrees();
 			positions = getPositionArrayFromMSFile(args[1]);
@@ -84,11 +93,14 @@ public class Main {
 		}
 		bestRegions = new int[localTrees.length][2];
 		Arrays.sort(sortedTreeLengths);
-		outputTreesSeperate(timeTrees, outputName, "Upgma");
 		buildLocalTrees();
+		if (Util.BRANCH_LENGTH) {
+			inferBranchLengths();
+		}
 	    Date endTime = new Date();
+	    outputTreesSeperate(timeTrees, outputName, "Upgma");
 	    scaleTimes(timeTreeLengths);
-	    if (args.length > 1) {
+	    if (args.length > 1 && args[1] != null) {
 	    	compareAllTreesRooted(positions);
 	    	compareAllTrees(positions);
 	    	System.out.println("-----------------------");
@@ -769,7 +781,7 @@ public class Main {
 			Tree timeTree = timeTrees[i];
 			String split = originalSplits.get(i).isEmpty()?getSingleMutation(i):originalSplits.get(i).toString();
 			System.out.println("At index " + (i) + ", " + " Inferred Tree: " + localTree.toString()+ " [" + localTreeLengths[i] + "]"
-					+ " Time Tree: " + timeTree.toString() + " [" + timeTreeLengths[i]+ "]"
+					+ " UPGMA Tree: " + timeTree.toString() + " [" + timeTreeLengths[i]+ "]"
 					 + " Best Compatible Region: [" + bestRegions[i][0] + ","
 					 + bestRegions[i][1] + "]"
 					+ " {" + positions.get(i) + "}"
@@ -1849,6 +1861,73 @@ public class Main {
 		}
 	}
 	
+
+	private void inferBranchLengths() {
+		Set<Set<Integer>> currentSplit = localTrees[0].getSplits();
+		List<int[]> regions = new ArrayList<int[]>();
+		int[] region = new int[2];
+		region[0] = 0;
+		for (int i = 1; i < localTrees.length; i++) {
+			if (!localTrees[i].getSplits().equals(currentSplit)) {
+				region[1] = i-1;
+				regions.add(region);
+				region = new int[2];
+				region[0] = i;
+				currentSplit = localTrees[i].getSplits();
+			}
+		}
+		for (int i = 0; i < timeTreeLengths.length; i++) {
+			localTreeLengths[i] = timeTreeLengths[i];
+		}
+		scaleTimes(timeTreeLengths);
+		region[1] = localTrees.length-1;
+		regions.add(region);
+		Map<Set<Integer>, Double> splitMap = new HashMap<Set<Integer>, Double>();
+		for (int[] r : regions) {
+			Tree tree = localTrees[r[0]];
+			splitMap.clear();
+			for (Set<Integer> split : tree.getSplits()) {
+				double height = 0.0;
+				if (split.size() != 1) {
+					for (int i = r[0]; i <= r[1]; i++) {
+						height += Double.valueOf(timeTrees[i].getBestSplitNode(split).getInfo());
+					}
+				}
+				height = height/(r[1]-r[0]+1);
+				splitMap.put(split, height);
+			}
+			for (int i = r[0]; i <= r[1]; i++) {
+				tree = localTrees[i];
+				Tree timeTree = timeTrees[i];
+				double multiplier = timeTreeLengths[i]/localTreeLengths[i];
+				for (Node node : timeTree.getNodes()) {
+					double branchLength = Double.valueOf(node.getBranchLength());
+					double height = Double.valueOf(node.getInfo());
+					node.setBranchLength(String.format( "%.2f",(branchLength)*multiplier));
+					node.setInfo(String.format( "%.2f",(height)*multiplier));
+				}
+				double treeHeight = splitMap.get(overalSplit);
+				multiplier *= localTreeLengths[i]/treeHeight;
+				for (Node node : tree.getNodes()) {
+					double height = 0;
+					if (node.getSplit().size() != 1) {
+						height = splitMap.get(node.getSplit());
+					}
+					double parentHeight = 0;
+					if (node.getParent() != null){
+						parentHeight = splitMap.get(node.getParent().getSplit());
+						node.setBranchLength(String.format( "%.2f",(parentHeight - height)*multiplier));
+					}else {
+						node.setBranchLength("0");
+					}
+					node.setInfo(String.format( "%.2f",height*multiplier));
+				}
+			}
+		}
+		scaleTimes(localTreeLengths);
+	}
+
+
 	private Tree[] buildLocalTrees() {
 		fullyCompatibleWithCheckNew();
 		fullyCompatibleRegionRuleNew();

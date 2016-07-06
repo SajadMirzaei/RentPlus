@@ -83,6 +83,9 @@ public class Tree {
 	}
 	@Override
 	public String toString() {
+		if (Util.BRANCH_LENGTH) {
+			return toStringWithBranchLength();
+		}
 //		if (updateFlag) {
 			string = Util.getString(root);
 			updateFlag = false;

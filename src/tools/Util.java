@@ -11,6 +11,7 @@ import object.Node;
 import object.Tree;
 
 public class Util {
+	public static boolean BRANCH_LENGTH = false;
 	public static Tree getPerfectPhylogeny(int[][] matrix, int[] root){
 		Tree result = new Tree();
 		// Getting related matrix

@@ -1,4 +1,4 @@
-# RentPlus v0.2 Beta
+# RentPlus v0.3 Beta
 
 INTRODUCTION :  This program, RentPlus, is a tool for reconstructing local tree topologies
                 for a set of population SNP haplotypes undergoing recombination.
@@ -6,9 +6,9 @@ INTRODUCTION :  This program, RentPlus, is a tool for reconstructing local tree 
                 RentPlus extends previous program RENT which uses a novel search method to infer the local trees, 
                 one for each genomic region near a SNP site. 
  
-			        	RentPlus takes a matrix of binary haplotypes as input, and 
+			    RentPlus takes a matrix of binary haplotypes as input, and 
                 outputs a list of tree topologies. 
-                Note: RentPlus only infers tree topologies (branch length is not provided).
+                
 
                 CAUTION:
                 Note: RentPlus assumes infinite sites model of mutations. Thus, if your data has many 
@@ -22,7 +22,9 @@ INTRODUCTION :  This program, RentPlus, is a tool for reconstructing local tree 
 
 ---------------------------------------------------------------------------
 
-SYNOPSIS: java -jar RentPlus.jar <data-filename> [<ms-file-name>]  
+SYNOPSIS	 : java -jar RentPlus.jar [<options>] <data-filename> [<ms-file-name>]  
+
+OPTIONS      :  "-t" to estimate branch length for local trees and UPGMA trees.
 
 DATA FILE    :  The first line of the data file contains the SNP site positions separated by a space.
 				Positions can be either doubles between 0 and 1 or integers.
