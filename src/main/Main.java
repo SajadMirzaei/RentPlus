@@ -1813,30 +1813,37 @@ public class Main {
 					set2.remove(worstNode);
 				}
 				//Dividing the node;
-				Node node1 = new Node();
-				Node node2 = new Node();
-				node1.getChildren().addAll(set1);
-				node2.getChildren().addAll(set2);
-				for (Node n : set1) {
-					n.setParent(node1);
-					node1.getSplit().addAll(n.getSplit());
+				if (set1.size() > 1) {
+					Node node1 = new Node();
+					node1.getChildren().addAll(set1);
+					for (Node n : set1) {
+						n.setParent(node1);
+						node1.getSplit().addAll(n.getSplit());
+					}
+					node1.setParent(node);
+					tree.getNodes().add(node1);
+					tree.getSplits().add(node1.getSplit());
+					if (node1.getChildren().size() > 2) {
+						nodesToBreak.add(node1);
+					}
+					node.getChildren().removeAll(set1);
+					node.getChildren().add(node1);
 				}
-				for (Node n : set2) {
-					n.setParent(node2);
-					node2.getSplit().addAll(n.getSplit());
-				}
-				node.getChildren().clear();
-				node.getChildren().add(node1);
-				node.getChildren().add(node2);
-				tree.getNodes().add(node1);
-				tree.getNodes().add(node2);
-				tree.getSplits().add(node1.getSplit());
-				tree.getSplits().add(node2.getSplit());
-				if (node1.getChildren().size() > 2) {
-					nodesToBreak.add(node1);
-				}
-				if (node2.getChildren().size() > 2) {
-					nodesToBreak.add(node2);
+				if (set2.size() > 1) {
+					Node node2 = new Node();
+					node2.getChildren().addAll(set2);
+					for (Node n : set2) {
+						n.setParent(node2);
+						node2.getSplit().addAll(n.getSplit());
+					}
+					node2.setParent(node);
+					tree.getNodes().add(node2);
+					tree.getSplits().add(node2.getSplit());
+					if (node2.getChildren().size() > 2) {
+						nodesToBreak.add(node2);
+					}
+					node.getChildren().removeAll(set2);
+					node.getChildren().add(node2);
 				}
 			}
 		}
