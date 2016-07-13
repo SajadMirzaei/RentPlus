@@ -6,7 +6,7 @@ INTRODUCTION :  This program, RentPlus, is a tool for reconstructing local tree 
                 RentPlus extends previous program RENT which uses a novel search method to infer the local trees, 
                 one for each genomic region near a SNP site. 
  
-			    RentPlus takes a matrix of binary haplotypes as input, and 
+		RentPlus takes a matrix of binary haplotypes as input, and 
                 outputs a list of tree topologies. 
                 
 
@@ -22,19 +22,19 @@ INTRODUCTION :  This program, RentPlus, is a tool for reconstructing local tree 
 
 ---------------------------------------------------------------------------
 
-SYNOPSIS	 : java -jar RentPlus.jar [<options>] <data-filename> [<ms-file-name>]  
+SYNOPSIS     : java -jar RentPlus.jar [<options>] <data-filename> [<ms-file-name>]  
 
-OPTIONS      :  "-t" to estimate branch length for local trees and UPGMA trees.
+OPTIONS      :  (Optional) use "-t" to estimate branch lengths for local trees and UPGMA trees.
 
 DATA FILE    :  The first line of the data file contains the SNP site positions separated by a space.
-				Positions can be either doubles between 0 and 1 or integers.
-				If no line for positions is provided, RentPlus divides the sequence length equally.  
+		Positions can be either doubles between 0 and 1 or integers.
+		If no line for positions is provided, RentPlus divides the sequence length equally.  
                 See the example data file for what is expected by RentPlus.
                 The data should be in 0,1. (Do NOT leave white space  
                 between columns.)  Each sequence should be placed in a its
                 own row. No SPACE between two values, please.
                 
-MS FILE		 :  (Optional) Test how accurate by comparing against a true list of trees 
+MS FILE	     :  (Optional) Test how accurate by comparing against a true list of trees 
                 (as outputed from Hudson's program MS with -T option turned on).
                 This allows comparison of the inferred tree against the TRUE trees.
 
