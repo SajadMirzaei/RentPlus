@@ -1861,7 +1861,6 @@ public class Main {
 		}
 	}
 	
-
 	private void inferBranchLengths() {
 		Set<Set<Integer>> currentSplit = localTrees[0].getSplits();
 		List<int[]> regions = new ArrayList<int[]>();
@@ -1886,6 +1885,11 @@ public class Main {
 		for (int[] r : regions) {
 			Tree tree = localTrees[r[0]];
 			splitMap.clear();
+			double scaledHeight = 0.0;
+			for (int i = r[0]; i <= r[1]; i++) {
+				scaledHeight += timeTreeLengths[i];
+			}
+			scaledHeight = scaledHeight/(r[1]-r[0]+1);
 			for (Set<Integer> split : tree.getSplits()) {
 				double height = 0.0;
 				if (split.size() != 1) {
@@ -1907,7 +1911,8 @@ public class Main {
 					node.setInfo(String.format( "%.2f",(height)*multiplier));
 				}
 				double treeHeight = splitMap.get(overalSplit);
-				multiplier *= localTreeLengths[i]/treeHeight;
+//				multiplier *= localTreeLengths[i]/treeHeight;
+				multiplier = scaledHeight/treeHeight;
 				for (Node node : tree.getNodes()) {
 					double height = 0;
 					if (node.getSplit().size() != 1) {
@@ -1916,15 +1921,19 @@ public class Main {
 					double parentHeight = 0;
 					if (node.getParent() != null){
 						parentHeight = splitMap.get(node.getParent().getSplit());
-						node.setBranchLength(String.format( "%.2f",(parentHeight - height)*multiplier));
+						node.setBranchLength(String.format( "%.2f",(parentHeight > height ? parentHeight - height:0)*multiplier));
 					}else {
 						node.setBranchLength("0");
+						localTreeLengths[i] = height*multiplier;
+					}
+					if (height > parentHeight){
+						height = parentHeight;
 					}
 					node.setInfo(String.format( "%.2f",height*multiplier));
 				}
 			}
 		}
-		scaleTimes(localTreeLengths);
+//		scaleTimes(localTreeLengths);
 	}
 
 
