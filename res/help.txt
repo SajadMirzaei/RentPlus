@@ -2,10 +2,7 @@
 
 INTRODUCTION :  This program, RentPlus, is a tool for reconstructing local tree topologies
                 for a set of population SNP haplotypes undergoing recombination.
-                Due to recombination, tree topologies change as one moves accross the genome.
-                RentPlus extends previous program RENT which uses a novel search method to infer the local trees, 
-                one for each genomic region near a SNP site. 
- 
+                 
 				RentPlus takes a matrix of binary haplotypes as input, and 
                 outputs a list of tree topologies, and TMRCAs for each SNP site. 
                 
@@ -17,8 +14,7 @@ INTRODUCTION :  This program, RentPlus, is a tool for reconstructing local tree 
                 That is, RentPlus may perform poorly for very sparse data.
                 At last, the trees outputed by RentPlus are rooted. However, the user should be careful about
                 where the root should be placed in the tree although current rooting is improved.
-              
-                RentPlus is written in java.   
+                
 
 ---------------------------------------------------------------------------
 

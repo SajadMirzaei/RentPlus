@@ -1,5 +1,6 @@
 package tools;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -295,4 +296,11 @@ public class Util {
 		return tree;
 	}
 	
+	public static InputStream load(String path){
+		InputStream input = Util.class.getResourceAsStream(path);
+		if (input == null){
+			input = Util.class.getResourceAsStream("/"+path);
+		}
+		return input;
+	}
 }

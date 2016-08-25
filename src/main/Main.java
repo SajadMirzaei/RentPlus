@@ -2,6 +2,7 @@ package main;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -9,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -47,6 +49,7 @@ public class Main {
 	private double UPGMA_THRESHOD = 0.2;
 	private double UPGMA_RANGE_CHECK = 0.2;
 	private int WINDOW_SIZE = 5;
+	private double theta;
 	
 	private String outputName;
 	
@@ -54,6 +57,34 @@ public class Main {
 	private List<Set<Integer>> originalSplits;
 	
 	public Main(String args[]) {
+		boolean needHelp = false;
+		if (args.length == 0) {
+			needHelp = true;
+		}else{
+			for (int i = 0; i < args.length; i++) {
+				if (args[i]=="-h" || args[i]=="-help"){
+					needHelp = true;
+					break;
+				}
+			}
+		}
+		if (needHelp) {
+			try {
+				InputStreamReader in = new InputStreamReader(Util.load("/help.txt"));
+				BufferedReader br = new BufferedReader(in);
+				String line = br.readLine();
+				while (line != null) {
+					System.out.println(line);
+					line = br.readLine();
+				}
+				br.close();
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			return;
+		}
 		if (args[0].equals("-t")) {
 			Util.BRANCH_LENGTH = true;
 			args[0] = args[1];
@@ -83,6 +114,13 @@ public class Main {
 		}else{
 			positions = getPositionArrayFromInputFile(args[0]);
 		}
+		// Calculating theta
+		double sum = 0;
+		for (int i = 1; i <= matrix.length-1; i++) {
+			sum+= 1.0/i;
+		}
+		theta = matrix[0].length/sum;
+		
 		makeDistanceMatrices();
 		makeUPGMATimeTrees();
 		buildNewRoot();
@@ -98,17 +136,18 @@ public class Main {
 			inferBranchLengths();
 		}
 	    Date endTime = new Date();
-	    outputTreesSeperate(timeTrees, outputName, "Upgma");
-	    scaleTimes(timeTreeLengths);
+//	    outputTreesSeperate(timeTrees, outputName, "Upgma");
+//	    scaleTimes(timeTreeLengths);
 	    if (args.length > 1 && args[1] != null) {
 	    	compareAllTreesRooted(positions);
 	    	compareAllTrees(positions);
 	    	System.out.println("-----------------------");
 		}else{
 			outputInferredTrees(positions);
-			outputTimes(args[0]);
+//			outputTimes(args[0]);
 		}
-	    outputTreesSeperate(localTrees,args[0], "");
+	    outputTreesSeperate(localTrees,outputName, "");
+	    outputTMRCAs(outputName);
 		System.out.println("Running Time: "
 				+ (double) (endTime.getTime() - startTime.getTime()) / 1000
 				+ " Seconds");
@@ -287,7 +326,8 @@ public class Main {
 					if (highestPosition == lowestPosition){
 						score = 1;
 					}else{
-						score = (double)totalCount/(double)(highestPosition - lowestPosition);
+//						score = (double)totalCount/(double)(highestPosition - lowestPosition);
+						score = (double)totalCount/(theta*(double)(highestPosition - lowestPosition)/TOTAL_SEQ_LENGTH);
 					}
 					distanceMatrices.get(i)[j][j2] = score;
 					distanceMatrices.get(i)[j2][j] = score;
@@ -297,13 +337,10 @@ public class Main {
 	}
 	
 	private void makeUPGMATimeTrees() {
-		System.out.print("Making UPGMA Trees");
+		System.out.print("Making Guide Trees");
 		Date startDate = new Date();
 		timeTrees = new Tree[positions.size()];
 		for (int i = 0; i < timeTrees.length; i++) {
-			if (i==5){
-				System.out.println("Index " + i);
-			}
 			Tree upgmaTree = new Tree();
 			double[][] distanceMatrix = distanceMatrices.get(i);
 			HashMap<Node, List<Integer>> clusters = new LinkedHashMap<Node, List<Integer>>();
@@ -544,17 +581,17 @@ public class Main {
 		return positions;
 	}
 
-	private void scaleTimes(double[] times) {
-		double avg = 0;
-		for (double d : times) {
-			avg += d;
-		}
-		avg = avg/times.length;
-		double multiplier = 2/avg;
-		for (int i = 0; i < times.length; i++) {
-			times[i] = times[i]*multiplier;
-		}
-	}
+//	private void scaleTimes(double[] times) {
+//		double avg = 0;
+//		for (double d : times) {
+//			avg += d;
+//		}
+//		avg = avg/times.length;
+//		double multiplier = 2/avg;
+//		for (int i = 0; i < times.length; i++) {
+//			times[i] = times[i]*multiplier;
+//		}
+//	}
 	
 	private void outputTimes(String inputUrl) {
 		try {
@@ -665,10 +702,10 @@ public class Main {
 					+ realTrueSplits.size()
 					+ " total splits are inferred.  Shared: "+ sharedSplits.size() 
 					+ " ---  Inferred Tree: " + localTree.toString()+ " [" + localTreeLengths[i] + "]"
-					+ " UPGMA Tree: " + timeTree.toString() + " [" + timeTreeLengths[i]+ "]"
+//					+ " UPGMA Tree: " + timeTree.toString() + " [" + timeTreeLengths[i]+ "]"
 					+ "  True Tree: " + trueTree + " ["	+ trueTreeLengths[i] + "]"
-					 + " Best Compatible Region: [" + bestRegions[i][0] + ","
-					 + bestRegions[i][1] + "]"
+//					 + " Best Compatible Region: [" + bestRegions[i][0] + ","
+//					 + bestRegions[i][1] + "]"
 					+ " {" + positions.get(i) + "}"
 					+ " Original Split: " + split
 					);
@@ -685,9 +722,9 @@ public class Main {
 		System.out.println("Inferred: " + numInferedSplits + " out of "
 				+ numTotalSplits + " splits = %" + (double) numInferedSplits
 				* 100.0 / (double) numTotalSplits);
-		System.out.println("Time: " + numTimeSplits + " out of "
-				+ numTotalSplits + " splits = %" + (double) numTimeSplits
-				* 100.0 / (double) numTotalSplits);
+//		System.out.println("Time: " + numTimeSplits + " out of "
+//				+ numTotalSplits + " splits = %" + (double) numTimeSplits
+//				* 100.0 / (double) numTotalSplits);
 	}
 	
 	private void compareAllTreesRooted(List<Integer> positions) {
@@ -752,7 +789,7 @@ public class Main {
 					+ realTrueClades.size()
 					+ " total clades are inferred.  Shared: "+ sharedClades.size() 
 					+ " ---  Inferred Tree: " + localTree.toString()+ " [" + localTreeLengths[i] + "]"
-					+ " UPGMA Tree: " + timeTree.toString() + " [" + timeTreeLengths[i]+ "]"
+//					+ " UPGMA Tree: " + timeTree.toString() + " [" + timeTreeLengths[i]+ "]"
 					+ "  True Tree: " + trueTree + " ["	+ trueTreeLengths[i] + "]"
 					+ " {" + positions.get(i) + "}"
 					+ " Original Split: " + split
@@ -770,20 +807,20 @@ public class Main {
 		System.out.println("Inf: " + numInferedSplits + " out of "
 				+ numTotalClades + " clades = %" + (double) numInferedSplits
 				* 100.0 / (double) numTotalClades);
-		System.out.println("Time: " + numTimeSplits + " out of "
-				+ numTotalClades + " clades = %" + (double) numTimeSplits
-				* 100.0 / (double) numTotalClades);
+//		System.out.println("Time: " + numTimeSplits + " out of "
+//				+ numTotalClades + " clades = %" + (double) numTimeSplits
+//				* 100.0 / (double) numTotalClades);
 	}
 	
 	private void outputInferredTrees(List<Integer> positions) {
 		for (int i = 0; i < localTrees.length; i++) {
 			Tree localTree = localTrees[i];
-			Tree timeTree = timeTrees[i];
+//			Tree timeTree = timeTrees[i];
 			String split = originalSplits.get(i).isEmpty()?getSingleMutation(i):originalSplits.get(i).toString();
 			System.out.println("At index " + (i) + ", " + " Inferred Tree: " + localTree.toString()+ " [" + localTreeLengths[i] + "]"
-					+ " UPGMA Tree: " + timeTree.toString() + " [" + timeTreeLengths[i]+ "]"
-					 + " Best Compatible Region: [" + bestRegions[i][0] + ","
-					 + bestRegions[i][1] + "]"
+//					+ " UPGMA Tree: " + timeTree.toString() + " [" + timeTreeLengths[i]+ "]"
+//					 + " Best Compatible Region: [" + bestRegions[i][0] + ","
+//					 + bestRegions[i][1] + "]"
 					+ " {" + positions.get(i) + "}"
 					+ " Original Split: " + split
 					);
@@ -960,7 +997,7 @@ public class Main {
 	}
 	
 	private void timeSplitRule() {
-		System.out.print("Time Tree Rule");
+		System.out.print("Adding Guide Tree Splits");
 		Date startDate = new Date();
 		int counter = 0;
 		for (int i = 0; i < timeTrees.length; i++) {
@@ -969,9 +1006,9 @@ public class Main {
 				counter += addSplitTooTree(i, localTrees[i], split, false, false, true);
 			}
 		}
-		System.out.print(" [" + (double) (new Date().getTime() - startDate.getTime()) / 1000
+		System.out.println(" [" + (double) (new Date().getTime() - startDate.getTime()) / 1000
 				+ " Seconds] ");
-		System.out.println("(" + counter + ")");
+//		System.out.println("(" + counter + ")");
 	}
 
 	private boolean isCompatible(Set<Integer> split1, Set<Integer> split2) {
@@ -1020,13 +1057,13 @@ public class Main {
 				}
 			}
 		}
-		System.out.print(" [" + (double) (new Date().getTime() - startDate.getTime()) / 1000
+		System.out.println(" [" + (double) (new Date().getTime() - startDate.getTime()) / 1000
 				+ " Seconds] ");
-		System.out.println("(" + counter + ")");
+//		System.out.println("(" + counter + ")");
 	}
 
 	private void propagationRuleNew() {
-		System.out.print("Propagation Rule Check");
+		System.out.print("Propagation Rule using Guide Tree Topologies");
 		Date startDate = new Date();
 		for (int i = 0; i < localTrees.length; i++) {
 			Tree localTree = localTrees[i];
@@ -1042,7 +1079,7 @@ public class Main {
 	}
 	
 	private void propagationHeightRule() {
-		System.out.print("Propagation Rule Height");
+		System.out.print("Propagation Rule using Guide Tree TMRCAs");
 		Date startDate = new Date();
 		int counter = 0;
 		for (int i = 0; i < localTrees.length; i++) {
@@ -1054,9 +1091,9 @@ public class Main {
 				}
 			}
 		}
-		System.out.print(" [" + (double) (new Date().getTime() - startDate.getTime()) / 1000
+		System.out.println(" [" + (double) (new Date().getTime() - startDate.getTime()) / 1000
 				+ " Seconds] ");
-		System.out.println("(" + counter + ")");
+//		System.out.println("(" + counter + ")");
 	}
 	
 	private boolean isCompatible(Set<Integer> concatenatedSplit, Tree tree) {
@@ -1072,7 +1109,7 @@ public class Main {
 	}
 
 	private void fullyCompatibleRegionRuleNew() {
-		System.out.print("Fully Compatible 2");
+		System.out.print("Fully Compatible Rule");
 		Date startDate = new Date();
 		List<Set<Set<Integer>>> splitsToAdd = new ArrayList<Set<Set<Integer>>>();
 		for (int i = 0; i < localTrees.length; i++) {
@@ -1160,13 +1197,13 @@ public class Main {
 				counter += addSplitTooTree(i, localTrees[i], split, false, true, false);
 			}
 		}
-		System.out.print(" [" + (double) (new Date().getTime() - startDate.getTime()) / 1000
+		System.out.println(" [" + (double) (new Date().getTime() - startDate.getTime()) / 1000
 				+ " Seconds] ");
-		System.out.println("(" + counter + ")");
+//		System.out.println("(" + counter + ")");
 	}
 	
 	private void fullyCompatibleWithCheckNew(){
-		System.out.print("Fully Compatible 1");
+		System.out.print("Fully Compatible Rule using Guide Trees");
 		Date startDate = new Date();
 		initiateCompatibleMatrix();
 		List<Set<Set<Integer>>> splitsToAdd = new ArrayList<Set<Set<Integer>>>();
@@ -1264,9 +1301,9 @@ public class Main {
 //				counter += addSplitTooTree(i, localTrees[i], split, false, true, false);
 //			}
 //		}
-		System.out.print(" [" + (double) (new Date().getTime() - startDate.getTime()) / 1000
+		System.out.println(" [" + (double) (new Date().getTime() - startDate.getTime()) / 1000
 				+ " Seconds] ");
-		System.out.println("(" + counter + ")");
+//		System.out.println("(" + counter + ")");
 	}
 
 	private int addSplitTooTree(int index, Tree tree, Set<Integer> addedSplit,
@@ -1576,7 +1613,7 @@ public class Main {
 	}
 	
 	private Tree[] initializeTrees() {
-		System.out.print("Initializing Trees ");
+		System.out.println("Initializing Trees ");
 		Tree[] localTrees = new Tree[matrix[0].length];
 		int counter = 0;
 		originalSplits = new ArrayList<Set<Integer>>();
@@ -1630,7 +1667,7 @@ public class Main {
 			tree.getSplits().add(rootNode.getSplit());
 
 		}
-		System.out.println("(" + counter + ")");
+//		System.out.println("(" + counter + ")");
 		return localTrees;
 	}
 	
@@ -1738,9 +1775,9 @@ public class Main {
 				}
 			}
 		}
-		System.out.print(" [" + (double) (new Date().getTime() - startDate.getTime()) / 1000
+		System.out.println(" [" + (double) (new Date().getTime() - startDate.getTime()) / 1000
 				+ " Seconds] ");
-		System.out.println("(" + counter + ")");
+//		System.out.println("(" + counter + ")");
 	}
 
 	private int resolveConflict(int i, int j) {
@@ -1878,7 +1915,7 @@ public class Main {
 		for (int i = 0; i < timeTreeLengths.length; i++) {
 			localTreeLengths[i] = timeTreeLengths[i];
 		}
-		scaleTimes(timeTreeLengths);
+//		scaleTimes(timeTreeLengths);
 		region[1] = localTrees.length-1;
 		regions.add(region);
 		Map<Set<Integer>, Double> splitMap = new HashMap<Set<Integer>, Double>();
@@ -1935,6 +1972,28 @@ public class Main {
 		}
 //		scaleTimes(localTreeLengths);
 	}
+	
+
+	private void outputTMRCAs(String inputUrl) {
+		try {
+			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
+			          new FileOutputStream(inputUrl + ".Tmrcas")));
+			for (int i = 0; i < localTreeLengths.length; i++) {
+				writer.write(String.valueOf(localTreeLengths[i]));
+				writer.newLine();
+			}
+			writer.flush();
+			writer.close();
+			
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
 
 
 	private Tree[] buildLocalTrees() {
