@@ -12,7 +12,7 @@ import tools.Util;
 public class Tree {
 	private Node root;
 	private List<Node> nodes = new ArrayList<Node>();
-	private Set<Set<Integer>> splits = new HashSet<Set<Integer>>();
+	private Set<Set<Short>> splits = new HashSet<Set<Short>>();
 	private String string = "";
 	private boolean updateFlag = true;
 	private HashMap<Node, Double> nodeLengthMap;
@@ -33,11 +33,11 @@ public class Tree {
 		this.nodes = nodes;
 	}
 
-	public Set<Set<Integer>> getSplits() {
+	public Set<Set<Short>> getSplits() {
 		return splits;
 	}
 
-	public void setSplits(Set<Set<Integer>> splits) {
+	public void setSplits(Set<Set<Short>> splits) {
 		this.splits = splits;
 	}
 	
@@ -51,7 +51,7 @@ public class Tree {
 
 	private void updateSplit(Node node) {
 		if (node.getChildren().isEmpty()) {
-			node.getSplit().add(Integer.valueOf(node.getId()));
+			node.getSplit().add(Short.valueOf(node.getId()));
 			return;
 		}
 		node.getSplit().clear();
@@ -71,7 +71,7 @@ public class Tree {
 		return taxa;
 	}
 
-	public Node getExactNodeForSplit(Set<Integer> bestSplit) {
+	public Node getExactNodeForSplit(Set<Short> bestSplit) {
 		for (Node node : nodes) {
 			if (node.getSplit().equals(bestSplit)) {
 				if (node.getChildren().size() != 1) {
@@ -126,10 +126,10 @@ public class Tree {
 		}		
 	}
 	
-	public Node getBestSplitNode(Set<Integer> split) {
+	public Node getBestSplitNode(Set<Short> split) {
 		Node bestNode = root;
 		for (Node node : nodes) {
-			Set<Integer> nodeSplit = node.getSplit();
+			Set<Short> nodeSplit = node.getSplit();
 			if (node.getSplit().equals(split))
 			{
 				return node;
@@ -221,18 +221,18 @@ public class Tree {
 		this.updateFlag = updateFlag;
 	}
 	
-	public List<Set<Integer>> getClades(){
-		List<Set<Integer>> list = new ArrayList<Set<Integer>>();
+	public List<Set<Short>> getClades(){
+		List<Set<Short>> list = new ArrayList<Set<Short>>();
 		getClade(root, list);
 		return list;
 	}
 	
-	public Set<Integer> getClade(Node node, List<Set<Integer>> list){
+	public Set<Short> getClade(Node node, List<Set<Short>> list){
 		if (node.getChildren().size() == 0) {
 			list.add(node.getSplit());
 			return node.getSplit();
 		}
-		Set<Integer> clade = new HashSet<Integer>();
+		Set<Short> clade = new HashSet<Short>();
 		for (Node child : node.getChildren()) {
 			clade.addAll(getClade(child, list));
 		}

@@ -15,11 +15,11 @@ public class Node {
 	private Node parent;
 	private Node parent2;
 	private List<Node> children;
-	private Set<Integer> split;
+	private Set<Short> split;
 	
 	public Node() {
 		children = new ArrayList<Node>();
-		split = new HashSet<Integer>();
+		split = new HashSet<Short>();
 	}
 	public String getId() {
 		return id;
@@ -97,10 +97,10 @@ public class Node {
 	public void setBranchLength(String time) {
 		this.branchLength = time;
 	}
-	public Set<Integer> getSplit() {
+	public Set<Short> getSplit() {
 		return split;
 	}
-	public void setSplit(Set<Integer> split) {
+	public void setSplit(Set<Short> split) {
 		this.split = split;
 	}
 	@Override
