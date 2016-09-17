@@ -16,7 +16,9 @@ public class Tree {
 	private String string = "";
 	private boolean updateFlag = true;
 	private HashMap<Node, Double> nodeLengthMap;
-
+	
+	public Tree() {
+	}
 	public Node getRoot() {
 		return root;
 	}
