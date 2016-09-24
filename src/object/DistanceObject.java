@@ -3,13 +3,13 @@ package object;
 import java.util.List;
 
 public class DistanceObject {
-	private List<Node> nodes;
+	private Node[] nodes;
 	private Float distance;
-	private Integer compatibleRange;
-	public List<Node> getNodes() {
+	private Short compatibleRange;
+	public Node[] getNodes() {
 		return nodes;
 	}
-	public void setNodes(List<Node> nodes) {
+	public void setNodes(Node[] nodes) {
 		this.nodes = nodes;
 	}
 	public Float getDistance() {
@@ -18,10 +18,10 @@ public class DistanceObject {
 	public void setDistance(Float distance) {
 		this.distance = distance;
 	}
-	public Integer getCompatibleRange() {
+	public Short getCompatibleRange() {
 		return compatibleRange;
 	}
-	public void setCompatibleRange(Integer compatibleRange) {
+	public void setCompatibleRange(Short compatibleRange) {
 		this.compatibleRange = compatibleRange;
 	}
 	
@@ -32,6 +32,6 @@ public class DistanceObject {
 	
 	@Override
 	public String toString() {
-		return "<[" + nodes.get(0) + "," + nodes.get(1) + "], " + distance + ", " + compatibleRange + ">";
+		return "<[" + nodes[0] + "," + nodes[1] + "], " + distance + ", " + compatibleRange + ">";
 	}
 }

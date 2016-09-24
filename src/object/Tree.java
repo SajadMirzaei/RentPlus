@@ -15,10 +15,11 @@ public class Tree {
 	private Set<Set<Short>> splits = new HashSet<Set<Short>>();
 	private String string = "";
 	private boolean updateFlag = true;
-	private HashMap<Node, Double> nodeLengthMap;
+//	private HashMap<Node, Double> nodeLengthMap;
 	
 	public Tree() {
 	}
+	
 	public Node getRoot() {
 		return root;
 	}
@@ -143,80 +144,6 @@ public class Tree {
 			}
 		}
 		return bestNode;
-	}
-	
-	public void cleanUp(){
-		boolean done = false;
-		while(!done){
-			List<Node> nodesToRemove = new ArrayList<Node>();
-			for (Node node : nodes) {
-				if (node.getId().equals("5318")) {
-					System.err.println();
-				}
-				if (node.isLeaf() && !node.getId().contains("n")) {
-					nodesToRemove.add(node);
-					node.getParent().getChildren().remove(node);
-					if (node.getParent2()!= null) {
-						node.getParent2().getChildren().remove(node);
-					}
-					break;
-				}
-				if (node.getChildren().size() == 1){
-					if (node.getParent() == null) {
-						nodesToRemove.add(node);
-						root = node.getChildren().get(0);
-						break;
-					}else{
-						Node child = node.getChildren().get(0);
-						child.setParent(node.getParent());
-						node.getParent().getChildren().remove(node);
-						node.getParent().getChildren().add(child);
-						nodesToRemove.add(node);
-						break;
-					}
-				}
-			}
-			if (nodesToRemove.size() == 0) {
-				done = true;
-			}else{
-				nodes.removeAll(nodesToRemove);
-			}
-		}
-	}
-	
-	public double getSplitLength(Set<Integer> split){
-		if (nodeLengthMap == null) {
-			nodeLengthMap = new HashMap<Node, Double>();
-		}
-		Node bestNode = root;
-		for (Node node : nodes) {
-			if (node.getSplit().containsAll(split)) {
-				if (node.getSplit().size() < bestNode.getSplit().size()) {
-					bestNode = node;
-				}
-			}
-		}
-		double length = getLengthOfNode(bestNode);
-		return length;
-	}
-
-	private double getLengthOfNode(Node node) {
-		if (node.isLeaf()) {
-			return 0;
-		}
-		if (nodeLengthMap.get(node) != null) {
-			return nodeLengthMap.get(node);
-		}else{
-			double longest = 0;
-			for (Node child : node.getChildren()) {
-				double childLength = Double.valueOf(child.getBranchLength()) + getLengthOfNode(child);
-				if (childLength > longest) {
-					longest = childLength;
-				}
-			}
-			nodeLengthMap.put(node, longest);
-			return longest;
-		}
 	}
 	
 	public void setUpdateFlag(boolean updateFlag) {

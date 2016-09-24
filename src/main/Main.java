@@ -46,9 +46,10 @@ public class Main {
 	private Set<Short> overalSplit;
 	private float TOTAL_SEQ_LENGTH = 0;
 	private double UPGMA_THRESHOD = 0.2;
-	private double UPGMA_RANGE_CHECK = 0.2;
+	private double UPGMA_RANGE_CHECK = 1;
 	private int WINDOW_SIZE = 5;
 	private float theta;
+	public static int NUM_TAXA;
 	
 	private String outputName;
 	
@@ -63,7 +64,6 @@ public class Main {
 	}
 	
 	public Main(String args[]) {
-		logMemory();
 		boolean needHelp = false;
 		if (args.length == 0) {
 			needHelp = true;
@@ -110,6 +110,7 @@ public class Main {
 		logMemory();
 		buildDataFromHapMatrix(args[0]);
 		logMemory();
+		NUM_TAXA = matrix.length;
 		System.out.println("Initiating TMRCAs");
 		for (int i = 0; i < matrix.length; i++) {
 			overalSplit.add((short) (i+1));
@@ -121,9 +122,9 @@ public class Main {
 		if (args.length > 1 && args[1] != null) {
 			System.out.println("Reading MS files");
 			getTrueTreesFromMsFile(args[1]);
+			System.gc();
 			getDistanceMatricesForTrueTrees();
 			positions = getPositionArrayFromMSFile(args[1]);
-			logMemory();
 		}else{
 			System.out.println("Reading positions");
 			positions = getPositionArrayFromInputFile(args[0]);
@@ -137,9 +138,11 @@ public class Main {
 		
 		logMemory();
 		makeDistanceMatrices();
+		System.gc();
 		logMemory();
 //		makeUPGMATimeTrees();
 		makeGuideTrees();
+		System.gc();
 		logMemory();
 		buildNewRoot();
 		localTrees = initializeTrees();
@@ -154,6 +157,7 @@ public class Main {
 		if (Util.BRANCH_LENGTH) {
 			inferBranchLengths();
 		}
+		logMemory();
 	    Date endTime = new Date();
 //	    outputTreesSeperate(timeTrees, outputName, "Upgma");
 //	    scaleTimes(timeTreeLengths);
@@ -473,6 +477,7 @@ public class Main {
 		System.out.print("Making Guide Trees");
 		Date startDate = new Date();
 		timeTrees = new Tree[positions.size()];
+		Map<Set<Short>, short[]> compatibleRegionMap = new HashMap<Set<Short>, short[]>();
 		for (int i = 0; i < timeTrees.length; i++) {
 			Tree upgmaTree = new Tree();
 			float[][] distanceMatrix = distanceMatrices.get(i);
@@ -483,11 +488,6 @@ public class Main {
 				@Override
 				public int compare(DistanceObject o1, DistanceObject o2) {
 					return o1.getDistance() < o2.getDistance() ? -1 : 1;
-//					if (o1.getDistance().equals(o2.getDistance())) {
-//						return 1;
-//					} else {
-//						return -o2.getDistance().compareTo(o1.getDistance());
-//					}
 				}
 			});
 			
@@ -495,30 +495,25 @@ public class Main {
 				@Override
 				public int compare(DistanceObject o1, DistanceObject o2) {
 					return o1.getCompatibleRange() <= o2.getCompatibleRange() ? 1 : -1;
-//					if (o1.getCompatibleRange().equals(o2.getCompatibleRange())) {
-//						return 1;
-//					} else {
-//						return o2.getCompatibleRange().compareTo(o1.getCompatibleRange());
-//					}
 				}
 			});
 			
 			Set<Node> removedNodes = new HashSet<Node>();
 			// initiating clusters
 			for (int j = 0; j < matrix.length; j++) {
-				Node node = new Node();
+				Node node = new Node(1);
 				node.setId(String.valueOf(j + 1));
 				node.setInfo("0.0");
 				List<Short> taxaCovering = new ArrayList<Short>();
 				taxaCovering.add((short) (j + 1));
 				clusters.put(node, taxaCovering);
-				List<DistanceObject> distanceObjects = new ArrayList<DistanceObject>();
+//				List<DistanceObject> distanceObjects = new ArrayList<DistanceObject>();
 //				nodeDistanceObjectMap.put(node, distanceObjects);
 			}
 			//
 			List<Node> clusterNodes = new ArrayList<Node>();
 			clusterNodes.addAll(clusters.keySet());
-			List<Node> nodesToConcat = new ArrayList<Node>();
+			Node[] nodesToConcat = new Node[2];
 			// Making the initial TreeMap with the distances sorted
 			for (int j = 0; j < clusterNodes.size() - 1; j++) {
 				for (int j2 = j + 1; j2 < clusterNodes.size(); j2++) {
@@ -528,15 +523,15 @@ public class Main {
 					combinedSplit.addAll(clusters.get(node1));
 					combinedSplit.addAll(clusters.get(node2));
 					if (isCompatible(originalSplits.get(i), combinedSplit)) {
-						List<Node> pair = new ArrayList<Node>();
-						pair.add(node1);
-						pair.add(node2);
+						Node[] pair = new Node[2];
+						pair[0] = node1;
+						pair[1] = node2;
 						Float distance;
 						distance = getDistanceOfClusters(clusters.get(node1), clusters.get(node2), distanceMatrix);
 						DistanceObject distanceObject = new DistanceObject();
 						distanceObject.setNodes(pair);
 						distanceObject.setDistance(distance);
-						distanceObject.setCompatibleRange(0);
+						distanceObject.setCompatibleRange((short)0);
 						distanceSet.add(distanceObject);
 //						nodeDistanceObjectMap.get(node1).add(distanceObject);
 //						nodeDistanceObjectMap.get(node2).add(distanceObject);
@@ -546,20 +541,45 @@ public class Main {
 			while (clusters.keySet().size() > 1) {
 				// Making the second Map sorted by the compatible distance
 				DistanceObject firstElement = distanceSet.first();
-				while (removedNodes.contains(firstElement.getNodes().get(0))
-						|| removedNodes.contains(firstElement.getNodes().get(1))) {
+				while (removedNodes.contains(firstElement.getNodes()[0])
+						|| removedNodes.contains(firstElement.getNodes()[1])) {
 					distanceSet.pollFirst();
 					firstElement = distanceSet.first();
 				}
 				for (DistanceObject key : distanceSet) {
-					if (!removedNodes.contains(key.getNodes().get(0))
-							&& !removedNodes.contains(key.getNodes().get(1))) {
+					if (!removedNodes.contains(key.getNodes()[0])
+							&& !removedNodes.contains(key.getNodes()[1])) {
 						if (key.getDistance() == 0.0) {
-							key.setCompatibleRange(Integer.MAX_VALUE);
+							key.setCompatibleRange(Short.MAX_VALUE);
 							compatibleDistanceSet.add(key);
 						}else if (key.getDistance() <= firstElement.getDistance() * (1 + UPGMA_THRESHOD)) {
 							if (key.getCompatibleRange() == 0) {
-								int compatipleDistance = findCompatibleDistance(key.getNodes(), clusters, i);
+								Set<Short> coveringSet = new HashSet<Short>(clusters.get(key.getNodes()[0]));
+								coveringSet.addAll(clusters.get(key.getNodes()[1]));
+								short[] range = compatibleRegionMap.get(coveringSet);
+								short compatipleDistance = 0; 
+								if (range != null && range[0] <= i && i <= range[1]) {
+									if (range[0] == 0) {
+										compatipleDistance = (short) (range[1] - i);
+									}else if (range[1] == positions.size()-1){
+										compatipleDistance = (short) (i - range[0]);
+									}else{
+										compatipleDistance = (short) Math.min(range[1] - i, i - range[0]);
+									}
+//									compatipleDistance = (short) (range[1] - range[0] + 1);
+								} else {
+									range = findCompatibleRegion(key.getNodes(), coveringSet, i);
+									if (range[0] == 0) {
+										compatipleDistance = (short) (range[1] - i);
+									}else if (range[1] == positions.size()-1){
+										compatipleDistance = (short) (i - range[0]);
+									}else{
+										compatipleDistance = (short) Math.min(range[1] - i, i - range[0]);
+									}
+//									compatipleDistance = (short) (range[1] - range[0] + 1);
+									compatibleRegionMap.put(coveringSet, range);
+								}
+//								short compatipleDistance = findCompatibleDistance(key.getNodes(), clusters, i);
 								key.setCompatibleRange(compatipleDistance);
 								compatibleDistanceSet.add(key);
 							}
@@ -569,14 +589,17 @@ public class Main {
 					}
 				}
 				DistanceObject firstConcatObject = compatibleDistanceSet.first();
-				while (removedNodes.contains(firstConcatObject.getNodes().get(0))
-						|| removedNodes.contains(firstConcatObject.getNodes().get(1))) {
+				while (removedNodes.contains(firstConcatObject.getNodes()[0])
+						|| removedNodes.contains(firstConcatObject.getNodes()[1])) {
 					compatibleDistanceSet.pollFirst();
 					firstConcatObject = compatibleDistanceSet.first();
 				}
 				nodesToConcat = firstConcatObject.getNodes();
-				Node newNode = new Node();
-				newNode.getChildren().addAll(nodesToConcat);
+				int capacity = nodesToConcat[0].getSplit().size() + nodesToConcat[1].getSplit().size();
+				Node newNode = new Node(capacity);
+				newNode.getChildren().add(nodesToConcat[0]);
+				newNode.getChildren().add(nodesToConcat[1]);
+				
 				List<Short> coveringTaxa = new ArrayList<Short>();
 				newNode.setInfo(String.valueOf(firstConcatObject.getDistance() / 2));
 				for (Node node : nodesToConcat) {
@@ -600,13 +623,13 @@ public class Main {
 //					}
 //					if (isCompatible(newCovering, originalSplits.get(i))) {
 						Float newDistance = getDistanceOfClusters(coveringTaxa, clusters.get(node), distanceMatrix);
-						List<Node> newPair = new ArrayList<Node>();
-						newPair.add(node);
-						newPair.add(newNode);
+						Node[] newPair = new Node[2];
+						newPair[0] = node;
+						newPair[1] = newNode;
 						DistanceObject newObject = new DistanceObject();
 						newObject.setNodes(newPair);
 						newObject.setDistance(newDistance);
-						newObject.setCompatibleRange(0);
+						newObject.setCompatibleRange((short)0);
 						distanceSet.add(newObject);
 //						nodeDistanceObjectMap.get(node).add(newObject);
 //						nodeDistanceObjectMap.get(newNode).add(newObject);
@@ -682,14 +705,14 @@ public class Main {
 		return positions;
 	}
 	
-	private  Integer findCompatibleDistance(List<Node> nodes, HashMap<Node, List<Short>> clusters, int i){
+	private  Short findCompatibleDistance(Node[] nodes, HashMap<Node, List<Short>> clusters, int i){
 		int index = 1;
-		int counter = 0;
+		short counter = 0;
+		Set<Short> combinedSplit = new HashSet<Short>();
+		for (Node node : nodes) {
+			combinedSplit.addAll(clusters.get(node));
+		}
 		while((i+index < positions.size() || i-index >= 0) && index < UPGMA_RANGE_CHECK*positions.size()){
-				Set<Short> combinedSplit = new HashSet<Short>();
-				for (Node node : nodes) {
-					combinedSplit.addAll(clusters.get(node));
-				}
 				if (i-index >= 0 && isCompatible(originalSplits.get(i-index), combinedSplit)) {
 					counter++;
 				}
@@ -711,6 +734,32 @@ public class Main {
 			index++;
 		}
 		return counter;
+	}
+	
+	private  short[] findCompatibleRegion(Node[] nodes, Set<Short> combinedSplit, int i){
+		short index = 1;
+		short minIndex = (short) i;
+		short maxIndex = (short) i;
+		while(i-index >= 0 && index < UPGMA_RANGE_CHECK*positions.size()){
+				if (i-index >= 0 && isCompatible(originalSplits.get(i-index), combinedSplit)) {
+					minIndex = (short) (i-index);
+				}
+				else{
+					break;
+				}
+			index++;
+		}
+		index=1;
+		while(i+index < positions.size() && index < UPGMA_RANGE_CHECK*positions.size()){
+			if (i+index <= positions.size()-1 && isCompatible(originalSplits.get(i+index), combinedSplit)) {
+				maxIndex = (short) (i+index);
+			}
+			else{
+				break;
+			}
+			index++;
+		}
+		return new short[]{minIndex,maxIndex};
 	}
 	
 	private LinkedHashMap<Set<Node>, Float> findBestPairs(Map<Set<Node>, Float> validNodesToContactMap, HashMap<Node, List<Short>> clusters, int i){
@@ -1579,13 +1628,17 @@ public class Main {
 				}
 				if (valid) {
 					Node splitNode = tree.getExactNodeForSplit(bestSplit);
-					Node newNode = new Node();
-					newNode.setParent(splitNode);
 					List<Node> nodesToRemove = new ArrayList<Node>();
 					for (Node child : splitNode.getChildren()) {
 						if (addedSplit.containsAll(child.getSplit()))
 							nodesToRemove.add(child);
 					}
+					int capacity = 0;
+					for (Node node : nodesToRemove) {
+						capacity += node.getSplit().size();
+					}
+					Node newNode = new Node(capacity);
+					newNode.setParent(splitNode);
 					splitNode.getChildren().removeAll(nodesToRemove);
 					splitNode.getChildren().add(newNode);
 					newNode.getChildren().addAll(nodesToRemove);
@@ -1643,13 +1696,17 @@ public class Main {
 			}
 			if (compatible) {
 				Node splitNode = tree.getExactNodeForSplit(bestSplit);
-				Node newNode = new Node();
-				newNode.setParent(splitNode);
 				List<Node> nodesToRemove = new ArrayList<Node>();
 				for (Node child : splitNode.getChildren()) {
 					if (addedSplit.containsAll(child.getSplit()))
 						nodesToRemove.add(child);
 				}
+				int capacity = 0;
+				for (Node node : nodesToRemove) {
+					capacity += node.getSplit().size();
+				}
+				Node newNode = new Node(capacity);
+				newNode.setParent(splitNode);
 				splitNode.getChildren().removeAll(nodesToRemove);
 				splitNode.getChildren().add(newNode);
 				newNode.getChildren().addAll(nodesToRemove);
@@ -1689,7 +1746,7 @@ public class Main {
 
 	private void getDistanceMatricesForTrueTrees() {
 		for (int i = 0; i < trueTrees.length; i++) {
-			Node taxa = new Node();
+			Node taxa = new Node(0);
 			for (Node node : trueTrees[i].getNodes()) {
 				if (node.isLeaf()) {
 					taxa = node;
@@ -1852,18 +1909,18 @@ public class Main {
 		originalSplits = new ArrayList<Set<Short>>();
 		for (int i = 0; i < matrix[0].length; i++) {
  			Tree tree = new Tree();
-			Node rootNode = new Node();
+			Node rootNode = new Node(NUM_TAXA);
 			rootNode.setId("root");
 			tree.setRoot(rootNode);
 			tree.getNodes().add(rootNode);
 			
 			if (isInformative(i)) {
 				counter ++;
-				Node inputSplitNode = new Node();
+				Node inputSplitNode = new Node(2);
 				inputSplitNode.setParent(rootNode);
 				tree.getNodes().add(inputSplitNode);
 				for (int j = 0; j < matrix.length; j++) {
-					Node node = new Node();
+					Node node = new Node(1);
 					node.setId(String.valueOf((short) (j+1)));
 					node.getSplit().add((short) (j+1));
 					rootNode.getSplit().add((short) (j+1));
@@ -1885,7 +1942,7 @@ public class Main {
 				originalSplits.add(originalSplit);
 			} else {
 				for (int j = 0; j < matrix.length; j++) {
-					Node node = new Node();
+					Node node = new Node(1);
 					node.setId(String.valueOf(j + 1));
 					node.getSplit().add((short) (j+1));
 					rootNode.getSplit().add((short) (j+1));
@@ -2097,7 +2154,11 @@ public class Main {
 				}
 				//Dividing the node;
 				if (set1.size() > 1) {
-					Node node1 = new Node();
+					int capacity = 0;
+					for (Node node_ : set1) {
+						capacity += node_.getSplit().size();
+					}
+					Node node1 = new Node(capacity);
 					node1.getChildren().addAll(set1);
 					for (Node n : set1) {
 						n.setParent(node1);
@@ -2113,7 +2174,11 @@ public class Main {
 					node.getChildren().add(node1);
 				}
 				if (set2.size() > 1) {
-					Node node2 = new Node();
+					int capacity = 0;
+					for (Node node_ : set1) {
+						capacity += node_.getSplit().size();
+					}
+					Node node2 = new Node(capacity);
 					node2.getChildren().addAll(set2);
 					for (Node n : set2) {
 						n.setParent(node2);
@@ -2233,22 +2298,31 @@ public class Main {
 	private Tree[] buildLocalTrees() {
 		logMemory();
 		fullyCompatibleWithCheckNew();
+		System.gc();
 		logMemory();
 		fullyCompatibleRegionRuleNew();
+		System.gc();
 		logMemory();
 		timeSplitOverrideRule();
+		System.gc();
 		logMemory();
 		propagationRuleNew();
+		System.gc();
 		logMemory();
 		propagationHeightRule();
+		System.gc();
 		logMemory();
 		propagationRule();
+		System.gc();
 		logMemory();
 		timeSplitRule();
+		System.gc();
 		logMemory();
 		propagationRule();
+		System.gc();
 		logMemory();
 		RefineNonBinaryNodes();
+		System.gc();
 		logMemory();
 		return localTrees;
 	}
@@ -2259,10 +2333,11 @@ public class Main {
 	public static void main(String[] args) {
 		if (args.length == 0) {
 //			String file = "15x20x720x720-ms-1";
-//			String file = "30x20x720x720-ms-1";
-			String file = "100x20x720x720-ms-1";
+			String file = "30x20x720x720-ms-1";
+//			String file = "100x20x720x720-ms-1";
 //			String file = "200x20x720x720-ms-1";
 //			String file = "500x20x720x720-ms-1";
+//			String file = "1000x20x720x720-ms-1";
 
 			String url = "res/" + file + ".dat";
 			String urlMs = "res/" + file + ".trace";

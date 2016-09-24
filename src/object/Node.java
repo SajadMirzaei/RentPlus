@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import main.Main;
 import tools.Util;
 
 public class Node {
@@ -13,13 +14,16 @@ public class Node {
 	private String branchLength;
 	private String info;
 	private Node parent;
-	private Node parent2;
 	private List<Node> children;
 	private Set<Short> split;
 	
 	public Node() {
-		children = new ArrayList<Node>();
+		children = new ArrayList<Node>(0);
 		split = new HashSet<Short>();
+	}
+	public Node(int splitSize) {
+		children = new ArrayList<Node>(0);
+		split = new HashSet<Short>(splitSize);
 	}
 	public String getId() {
 		return id;
@@ -32,12 +36,6 @@ public class Node {
 	}
 	public void setParent(Node parent) {
 		this.parent = parent;
-	}
-	public void setParent2(Node parent2) {
-		this.parent2 = parent2;
-	}
-	public Node getParent2() {
-		return parent2;
 	}
 	public List<Node> getChildren() {
 		return children;
@@ -56,42 +54,6 @@ public class Node {
 			return "0";
 		}
 		return branchLength;
-	}
-	
-	public Node copy(Node parent, Node parent2, HashMap<String, Node> map){
-		Node node = map.get(id);
-		if (node != null) {
-			if (parent == null && parent2 != null) {
-				node.setParent2(parent2);
-			}else if (parent != null && parent2 == null){
-				node.setParent(parent);
-			}
-			return node;
-		}
-		node = new Node();
-		node.setId(id);
-		node.setBranchLength(branchLength);
-		node.setInfo(info);
-		map.put(id, node);
-		for (Node child : children) {
-			Node newChild = new Node();
-			if (child != null) {
-				if (child.getParent().equals(this)) {
-					newChild = child.copy(node, null, map);
-				}else{
-					newChild = child.copy(null, node, map);
-				}
-			}else{
-				newChild = null;
-			}
-			node.getChildren().add(newChild);
-		}
-		if (parent == null && parent2 != null) {
-			node.setParent2(parent2);
-		}else if (parent != null && parent2 == null){
-			node.setParent(parent);
-		}
-		return node;
 	}
 	
 	public void setBranchLength(String time) {
