@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import main.Main;
@@ -16,6 +17,8 @@ public class Node {
 	private Node parent;
 	private List<Node> children;
 	private Set<Short> split;
+	
+	public static Map<Set<Short>, Set<Short>> generalSplitMap = new HashMap<Set<Short>, Set<Short>>();
 	
 	public Node() {
 		children = new ArrayList<Node>(0);
@@ -62,8 +65,31 @@ public class Node {
 	public Set<Short> getSplit() {
 		return split;
 	}
-	public void setSplit(Set<Short> split) {
-		this.split = split;
+//	public void addToSplit(Set<Short> split){
+//		this.split.addAll(split);
+//	}
+//	public void addToSplit(Short taxa){
+//		split.add(taxa);
+//	}
+	
+	public void addToSplit(Set<Short> splitToAdd){
+		Set<Short> newSplit = new HashSet<Short>();
+		if (generalSplitMap.get(split) != null) {
+			newSplit.addAll(generalSplitMap.get(split));
+		}
+		newSplit.addAll(splitToAdd);
+		Set<Short> existingSplit = generalSplitMap.get(newSplit);
+		if (existingSplit == null) {
+			generalSplitMap.put(newSplit, newSplit);
+			this.split = newSplit;
+		}else{
+			this.split = existingSplit;
+		}
+	}
+	public void addToSplit(Short taxa){
+		Set<Short> newSplit = new HashSet<Short>();
+		newSplit.add(taxa);
+		addToSplit(newSplit);
 	}
 	@Override
 	public String toString() {
@@ -75,5 +101,13 @@ public class Node {
 			return true;
 		}
 		return false;
+	}
+	public void setSplit(Set<Short> split) {
+		Set<Short> existingSplit = generalSplitMap.get(split);
+		if (existingSplit == null) {
+			existingSplit = new HashSet<Short>(split);
+			generalSplitMap.put(existingSplit, existingSplit);
+		}
+		this.split = existingSplit;
 	}
 }

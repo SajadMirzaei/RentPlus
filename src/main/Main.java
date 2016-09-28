@@ -43,7 +43,7 @@ public class Main {
 	private List<Integer> positions;
 	private List<Integer> singletons;
 	private Set<Integer> indicesToRemove;
-	private Set<Short> overalSplit;
+	public static Set<Short> overalSplit;
 	private float TOTAL_SEQ_LENGTH = 0;
 	private double UPGMA_THRESHOD = 0.2;
 	private double UPGMA_RANGE_CHECK = 1;
@@ -1155,7 +1155,7 @@ public class Main {
 		return String.valueOf(matrix.length);
 	}
 
-	private Set<Short> reverseSplit(Set<Short> split) {
+	public static Set<Short> reverseSplit(Set<Short> split) {
 		Set<Short> reverseSplit = new HashSet<Short>();
 		for (Short splitNum : overalSplit) {
 			if (!split.contains(splitNum)) {
@@ -1281,16 +1281,14 @@ public class Main {
 	private void timeSplitRule() {
 		System.out.print("Adding Guide Tree Splits");
 		Date startDate = new Date();
-		int counter = 0;
 		for (int i = 0; i < timeTrees.length; i++) {
 			Tree tree = timeTrees[i];
 			for (Set<Short> split : tree.getSplits()) {
-				counter += addSplitTooTree(i, localTrees[i], split, false, false, true);
+				addSplitTooTree(i, localTrees[i], split, false, false, true);
 			}
 		}
 		System.out.println(" [" + (double) (new Date().getTime() - startDate.getTime()) / 1000
 				+ " Seconds] ");
-//		System.out.println("(" + counter + ")");
 	}
 
 	private boolean isCompatible(Set<Short> split1, Set<Short> split2) {
@@ -1329,19 +1327,16 @@ public class Main {
 	private void propagationRule() {
 		System.out.print("Propagation Rule ");
 		Date startDate = new Date();
-		int counter = 0;
 		for (int i = 0; i < localTrees.length; i++) {
 			Tree localTree = localTrees[i];
 			for (Set<Short> split : localTree.getSplits()) {
-				if (split.size() > 1
-						&& split.size() < localTree.getRoot().getSplit().size() - 1) {
-					counter += propagateSplit(i, split);
+				if (split.size() > 1 && split.size() < NUM_TAXA - 1) {
+					propagateSplit(i, split);
 				}
 			}
 		}
 		System.out.println(" [" + (double) (new Date().getTime() - startDate.getTime()) / 1000
 				+ " Seconds] ");
-//		System.out.println("(" + counter + ")");
 	}
 
 	private void propagationRuleNew() {
@@ -1375,7 +1370,6 @@ public class Main {
 		}
 		System.out.println(" [" + (double) (new Date().getTime() - startDate.getTime()) / 1000
 				+ " Seconds] ");
-//		System.out.println("(" + counter + ")");
 	}
 	
 	private boolean isCompatible(Set<Short> concatenatedSplit, Tree tree) {
@@ -1567,32 +1561,24 @@ public class Main {
 			splitsToAdd.add(splitSet);
 			bestRegions[i] = bestRegion;
 		}
-		int counter = 0;
 		for (int i = 0; i < splitsToAdd.size(); i++) {
 			Set<Set<Short>> splitSet = splitsToAdd.get(i);
 			for (Set<Short> split : splitSet) {
 //				if (isCompatible(split, timeTrees[i])) {
-				if (timeTrees[i].getSplits().contains(split)){
-					counter += addSplitTooTree(i, localTrees[i], split, false, true, false);
+				if (timeTrees[i].containsSplit(split)){
+					addSplitTooTree(i, localTrees[i], split, false, true, false);
 				}
 			}
 		}
-//		for (int i = 0; i < splitsToAdd.size(); i++) {
-//			Set<Set<Integer>> splitSet = splitsToAdd.get(i);
-//			for (Set<Integer> split : splitSet) {
-//				counter += addSplitTooTree(i, localTrees[i], split, false, true, false);
-//			}
-//		}
 		System.out.println(" [" + (double) (new Date().getTime() - startDate.getTime()) / 1000
 				+ " Seconds] ");
-//		System.out.println("(" + counter + ")");
 	}
 
 	private int addSplitTooTree(int index, Tree tree, Set<Short> addedSplit,
 			boolean propagate, boolean eligibilityCheck, boolean normalPropagation) {
 		int counter = 0;
-		if (!tree.getSplits().contains(addedSplit)
-				&& !tree.getSplits().contains(reverseSplit(addedSplit))) {
+		if (!tree.containsSplit(addedSplit)
+				&& !tree.containsSplit(reverseSplit(addedSplit))) {
 			Set<Short> bestSplit = new HashSet<Short>();
 			bestSplit = tree.getRoot().getSplit();
 			boolean compatible = true;
@@ -1644,10 +1630,10 @@ public class Main {
 					newNode.getChildren().addAll(nodesToRemove);
 					for (Node node : nodesToRemove) {
 						node.setParent(newNode);
-						newNode.getSplit().addAll(node.getSplit());
+						newNode.addToSplit(node.getSplit());
 					}
-					tree.getNodes().add(newNode);
-					tree.getSplits().add(newNode.getSplit());
+					tree.addNode(newNode);
+					tree.addSplit(newNode.getSplit());
 					counter++;
 					if (propagate) {
 						if (normalPropagation) {
@@ -1664,8 +1650,8 @@ public class Main {
 	
 	private int addSplitTooTreeOnly(int index, Tree tree, Set<Short> addedSplit) {
 		int counter = 0;
-		if (!tree.getSplits().contains(addedSplit)
-				&& !tree.getSplits().contains(reverseSplit(addedSplit))) {
+		if (!tree.containsSplit(addedSplit)
+				&& !tree.containsSplit(reverseSplit(addedSplit))) {
 			Set<Short> bestSplit = new HashSet<Short>();
 			bestSplit = tree.getRoot().getSplit();
 			boolean compatible = true;
@@ -1712,10 +1698,10 @@ public class Main {
 				newNode.getChildren().addAll(nodesToRemove);
 				for (Node node : nodesToRemove) {
 					node.setParent(newNode);
-					newNode.getSplit().addAll(node.getSplit());
+					newNode.addToSplit(node.getSplit());
 				}
-				tree.getNodes().add(newNode);
-				tree.getSplits().add(newNode.getSplit());
+				tree.addNode(newNode);
+				tree.addSplit(newNode.getSplit());
 				counter++;
 			}else{
 				return -1;
@@ -1872,7 +1858,7 @@ public class Main {
 		int i = index;
 		if (index < root.length - 1) {
 			index++;
-			while(timeTrees[index].getSplits().contains(addedSplit) && addSplitTooTreeOnly(index, localTrees[index], addedSplit) >= 0){
+			while(timeTrees[index].containsSplit(addedSplit) && addSplitTooTreeOnly(index, localTrees[index], addedSplit) >= 0){
 				if (index == root.length-1) {
 					break;
 				}
@@ -1882,7 +1868,7 @@ public class Main {
 		index = i;
 		if (index > 0) {
 			index--;
-			while(timeTrees[index].getSplits().contains(addedSplit) && addSplitTooTreeOnly(index, localTrees[index], addedSplit) >= 0){
+			while(timeTrees[index].containsSplit(addedSplit) && addSplitTooTreeOnly(index, localTrees[index], addedSplit) >= 0){
 				if (index == 0) {
 					break;
 				}
@@ -1912,31 +1898,31 @@ public class Main {
 			Node rootNode = new Node(NUM_TAXA);
 			rootNode.setId("root");
 			tree.setRoot(rootNode);
-			tree.getNodes().add(rootNode);
+			tree.addNode(rootNode);
 			
 			if (isInformative(i)) {
 				counter ++;
 				Node inputSplitNode = new Node(2);
 				inputSplitNode.setParent(rootNode);
-				tree.getNodes().add(inputSplitNode);
+				tree.addNode(inputSplitNode);
 				for (int j = 0; j < matrix.length; j++) {
 					Node node = new Node(1);
 					node.setId(String.valueOf((short) (j+1)));
-					node.getSplit().add((short) (j+1));
-					rootNode.getSplit().add((short) (j+1));
-					tree.getNodes().add(node);
+					node.addToSplit((short) (j+1));
+					rootNode.addToSplit((short) (j+1));
+					tree.addNode(node);
 					if (matrix[j][i] == root[i]) {
 						rootNode.getChildren().add(node);
 						node.setParent(rootNode);
 					} else {
 						inputSplitNode.getChildren().add(node);
 						node.setParent(inputSplitNode);
-						inputSplitNode.getSplit().add((short) (j+1));
+						inputSplitNode.addToSplit((short) (j+1));
 					}
-					tree.getSplits().add(node.getSplit());
+					tree.addSplit(node.getSplit());
 				}
 				rootNode.getChildren().add(inputSplitNode);
-				tree.getSplits().add(inputSplitNode.getSplit());
+				tree.addSplit(inputSplitNode.getSplit());
 				Set<Short> originalSplit = new HashSet<Short>();
 				originalSplit.addAll(inputSplitNode.getSplit());
 				originalSplits.add(originalSplit);
@@ -1944,17 +1930,17 @@ public class Main {
 				for (int j = 0; j < matrix.length; j++) {
 					Node node = new Node(1);
 					node.setId(String.valueOf(j + 1));
-					node.getSplit().add((short) (j+1));
-					rootNode.getSplit().add((short) (j+1));
+					node.addToSplit((short) (j+1));
+					rootNode.addToSplit((short) (j+1));
 					rootNode.getChildren().add(node);
 					node.setParent(rootNode);
-					tree.getNodes().add(node);
-					tree.getSplits().add(node.getSplit());
+					tree.addNode(node);
+					tree.addSplit(node.getSplit());
 				}
 				originalSplits.add(new HashSet<Short>());
 			}
 			localTrees[i] = tree;
-			tree.getSplits().add(rootNode.getSplit());
+			tree.addSplit(rootNode.getSplit());
 
 		}
 //		System.out.println("(" + counter + ")");
@@ -2076,9 +2062,9 @@ public class Main {
 		Set<Short> split2 = originalSplits.get(j);
 		int counter = 0;
 		for (int k = i+1; k < j; k++) {
-			if (timeTrees[k].getSplits().contains(split1)) {
+			if (timeTrees[k].containsSplit(split1)) {
 				counter += addSplitTooTree(k, localTrees[k], split1, false, false, true);
-			}else if (timeTrees[k].getSplits().contains(split2)){
+			}else if (timeTrees[k].containsSplit(split2)){
 				counter += addSplitTooTree(k, localTrees[k], split2, false, false, true);
 			}
 		}
@@ -2162,11 +2148,11 @@ public class Main {
 					node1.getChildren().addAll(set1);
 					for (Node n : set1) {
 						n.setParent(node1);
-						node1.getSplit().addAll(n.getSplit());
+						node1.addToSplit(n.getSplit());
 					}
 					node1.setParent(node);
-					tree.getNodes().add(node1);
-					tree.getSplits().add(node1.getSplit());
+					tree.addNode(node1);
+					tree.addSplit(node1.getSplit());
 					if (node1.getChildren().size() > 2) {
 						nodesToBreak.add(node1);
 					}
@@ -2182,11 +2168,11 @@ public class Main {
 					node2.getChildren().addAll(set2);
 					for (Node n : set2) {
 						n.setParent(node2);
-						node2.getSplit().addAll(n.getSplit());
+						node2.addToSplit(n.getSplit());
 					}
 					node2.setParent(node);
-					tree.getNodes().add(node2);
-					tree.getSplits().add(node2.getSplit());
+					tree.addNode(node2);
+					tree.addSplit(node2.getSplit());
 					if (node2.getChildren().size() > 2) {
 						nodesToBreak.add(node2);
 					}
@@ -2333,9 +2319,9 @@ public class Main {
 	public static void main(String[] args) {
 		if (args.length == 0) {
 //			String file = "15x20x720x720-ms-1";
-			String file = "30x20x720x720-ms-1";
+//			String file = "30x20x720x720-ms-1";
 //			String file = "100x20x720x720-ms-1";
-//			String file = "200x20x720x720-ms-1";
+			String file = "200x20x720x720-ms-1";
 //			String file = "500x20x720x720-ms-1";
 //			String file = "1000x20x720x720-ms-1";
 

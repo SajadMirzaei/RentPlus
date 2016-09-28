@@ -1,0 +1,9 @@
+Update3: New guide tree rule using Treesets for distances. 
+Update4: (Failed): Trying to filter added distance to the Treeset, but it made is slower
+Update5: Simplifying the compare methods for Treesets, a little speed up. 
+Update6: Simplifying DistanceObject, and small improvement in findCompatibleDistance.
+Update7*: Using a new map to save the compatible range for each pair of nodes and increasing the Guide Tree range
+Update8: Setting up initial size for split sets and adding garbage collection after each rule. 
+Update9: Using a general Map containing all possible splits and only refering to them for memory saving.
+---------------------------------------------------------
+*Best version so far

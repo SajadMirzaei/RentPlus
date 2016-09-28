@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import main.Main;
 import tools.Util;
 
 public class Tree {
@@ -15,7 +16,6 @@ public class Tree {
 	private Set<Set<Short>> splits = new HashSet<Set<Short>>();
 	private String string = "";
 	private boolean updateFlag = true;
-//	private HashMap<Node, Double> nodeLengthMap;
 	
 	public Tree() {
 	}
@@ -40,28 +40,45 @@ public class Tree {
 		return splits;
 	}
 
-	public void setSplits(Set<Set<Short>> splits) {
-		this.splits = splits;
+	public void addSplit(Set<Short> split){
+		if (Node.generalSplitMap.containsKey(split)) {
+			splits.add(Node.generalSplitMap.get(split));
+		}else{
+			try {
+				throw new Exception("Split does not exist in the map");
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	public void addNode(Node node){
+		nodes.add(node);
+	}
+	
+	public boolean containsSplit(Set<Short> split){
+		return splits.contains(split);
 	}
 	
 	public void updateSplits(){
 		updateSplit(root);
 		splits.clear();
 		for (Node node : nodes) {
-			splits.add(node.getSplit());
+			addSplit(node.getSplit());
 		}
 	}
 
 	private void updateSplit(Node node) {
 		if (node.getChildren().isEmpty()) {
-			node.getSplit().add(Short.valueOf(node.getId()));
+			node.addToSplit(Short.valueOf(node.getId()));
 			return;
 		}
-		node.getSplit().clear();
+		Set<Short> split = new HashSet<Short>();
 		for (Node child : node.getChildren()) {
 			updateSplit(child);
-			node.getSplit().addAll(child.getSplit());
+			split.addAll(child.getSplit());
 		}
+		node.setSplit(split);
 	}
 	
 	public List<Node> getTaxa(){

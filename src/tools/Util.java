@@ -143,7 +143,7 @@ public class Util {
 				node.setId(temp.split(":")[0]);
 				node.setBranchLength(temp.split(":")[1]);
 				stack.add(node);
-				tree.getNodes().add(node);
+				tree.addNode(node);
 			}
 //			if ("".equals(temp.split(":")[0])) {
 			if (')' == previousChar) {
@@ -164,13 +164,13 @@ public class Util {
 				}
 				stack.remove(stack.size()-1);
 				stack.add(parent);
-				tree.getNodes().add(parent);
+				tree.addNode(parent);
 			}
 			previousChar = s.charAt(j);
 			i=j+1;
 		}
 		Node parent = stack.remove(stack.size()-1);
-		tree.getNodes().add(parent);
+		tree.addNode(parent);
 		tree.setRoot(parent);
 		return tree;
 	}
@@ -193,7 +193,7 @@ public class Util {
 				Node node = new Node(1);
 				node.setId(temp);
 				stack.add(node);
-				tree.getNodes().add(node);
+				tree.addNode(node);
 			}
 			if (')' == s.charAt(j)) {
 				List<Node> children = new ArrayList<Node>();
@@ -210,12 +210,12 @@ public class Util {
 				}
 				stack.remove(stack.size()-1);
 				stack.add(parent);
-				tree.getNodes().add(parent);
+				tree.addNode(parent);
 			}
 			i=j+1;
 		}
 		Node parent = stack.remove(stack.size()-1);
-		tree.getNodes().add(parent);
+		tree.addNode(parent);
 		tree.setRoot(parent);
 		return tree;
 	}
