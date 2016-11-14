@@ -23,6 +23,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 
+import object.DistanceHolder;
 import object.DistanceObject;
 import object.Node;
 import object.Tree;
@@ -34,13 +35,14 @@ public class Main {
 	private boolean[][] compatibleMatrix;
 	private Tree[] localTrees;
 	private Tree[] trueTrees;
-	private Tree[] timeTrees;
+	private Tree[] guideTrees;
 
-	private List<float[][]> distanceMatrices = new ArrayList<float[][]>();
+//	private List<float[][]> distanceMatrices = new ArrayList<float[][]>();
+	private DistanceHolder distanceHolder;
 	private double[] timeTreeLengths;
 	private double[] trueTreeLengths;
 	private double[] localTreeLengths;
-	private List<Integer> positions;
+	public static List<Integer> positions;
 	private List<Integer> singletons;
 	private Set<Integer> indicesToRemove;
 	public static Set<Short> overalSplit;
@@ -64,13 +66,23 @@ public class Main {
 	}
 	
 	public Main(String args[]) {
+		List<String> argsList = new ArrayList<String>();
+		for (int i = 0; i < args.length; i++) {
+			argsList.add(args[i]);
+		}
 		boolean needHelp = false;
 		if (args.length == 0) {
 			needHelp = true;
 		}else{
 			for (int i = 0; i < args.length; i++) {
-				if (args[i]=="-h" || args[i]=="-help"){
+				if (argsList.get(i).contains("-h") || argsList.get(i).contains("-help")){
 					needHelp = true;
+					break;
+				}
+				if (argsList.get(i).contains("-l")){
+					TOTAL_SEQ_LENGTH = Float.valueOf(args[i+1]);
+					argsList.remove(i+1);
+					argsList.remove(i);
 					break;
 				}
 			}
@@ -92,25 +104,19 @@ public class Main {
 			}
 			return;
 		}
-		if (args[0].equals("-t")) {
+		if (argsList.get(0).equals("-t")) {
 			Util.BRANCH_LENGTH = true;
-			args[0] = args[1];
-			if (args.length > 2) {
-				args[1] = args[2];
-			}else{
-				args[1] = null;
-			}
+			argsList.remove(0);
 		}
-		outputName = args[0];
+		outputName = argsList.get(0);
 		Date startTime = new Date();
 		System.out.println("Start Time: " + startTime);
 		overalSplit = new HashSet<Short>();
 		originalSplits = new ArrayList<Set<Short>>();
 		singletons = new ArrayList<Integer>();
-		logMemory();
-		buildDataFromHapMatrix(args[0]);
-		logMemory();
+		buildDataFromHapMatrix(argsList.get(0));
 		NUM_TAXA = matrix.length;
+		distanceHolder = new DistanceHolder(NUM_TAXA);
 		System.out.println("Initiating TMRCAs");
 		for (int i = 0; i < matrix.length; i++) {
 			overalSplit.add((short) (i+1));
@@ -118,17 +124,10 @@ public class Main {
 		timeTreeLengths = new double[matrix[0].length];
 		trueTreeLengths = new double[matrix[0].length];
 		localTreeLengths = new double[matrix[0].length];
-		logMemory();
-		if (args.length > 1 && args[1] != null) {
-			System.out.println("Reading MS files");
-			getTrueTreesFromMsFile(args[1]);
-			System.gc();
-			getDistanceMatricesForTrueTrees();
-			positions = getPositionArrayFromMSFile(args[1]);
-		}else{
-			System.out.println("Reading positions");
-			positions = getPositionArrayFromInputFile(args[0]);
-		}
+		
+		System.out.println("Reading positions");
+		positions = getPositionArrayFromInputFile(argsList.get(0));
+		
 		// Calculating theta
 		float sum = 0;
 		for (int i = 1; i <= matrix.length-1; i++) {
@@ -136,38 +135,35 @@ public class Main {
 		}
 		theta = matrix[0].length/sum;
 		
-		logMemory();
 		makeDistanceMatrices();
-		System.gc();
-		logMemory();
-//		makeUPGMATimeTrees();
 		makeGuideTrees();
-		System.gc();
-		logMemory();
+		distanceHolder = null;
 		buildNewRoot();
 		localTrees = initializeTrees();
-		logMemory();
 		double[] sortedTreeLengths = new double[localTrees.length];
 		for (int i = 0; i < sortedTreeLengths.length; i++) {
 			sortedTreeLengths[i] = timeTreeLengths[i];
 		}
 		bestRegions = new int[localTrees.length][2];
 		Arrays.sort(sortedTreeLengths);
+		
+		// ----------- The main method of rules
 		buildLocalTrees();
+		// -----------------------------------
+		
 		if (Util.BRANCH_LENGTH) {
 			inferBranchLengths();
 		}
-		logMemory();
+		guideTrees = null;
 	    Date endTime = new Date();
-//	    outputTreesSeperate(timeTrees, outputName, "Upgma");
-//	    scaleTimes(timeTreeLengths);
-	    if (args.length > 1 && args[1] != null) {
-//	    	compareAllTreesRooted(positions);
+	    if (argsList.size() > 1 && argsList.get(1) != null) {
+	    	System.out.println("Reading MS files");
+			getTrueTreesFromMsFile(argsList.get(1));
+			getDistanceMatricesForTrueTrees();
 	    	compareAllTrees(positions);
 	    	System.out.println("-----------------------");
 		}else{
 			outputInferredTrees(positions);
-//			outputTimes(args[0]);
 		}
 	    outputTreesSeperate(localTrees,outputName, "");
 	    outputTMRCAs(outputName);
@@ -175,7 +171,6 @@ public class Main {
 				+ (double) (endTime.getTime() - startTime.getTime()) / 1000
 				+ " Seconds");
 		logMemory();
-		
 	}
 
 
@@ -183,10 +178,10 @@ public class Main {
 		// initiating all distance matrices for all sites
 		System.out.print("Making Distance Matrices");
 		Date startDate = new Date();
-		for (int i = 1; i <= positions.size(); i++) {
-			float[][] distanceMatrix = new float[matrix.length][matrix.length];
-			distanceMatrices.add(distanceMatrix);
-		}
+//		for (int i = 1; i <= positions.size(); i++) {
+//			float[][] distanceMatrix = new float[matrix.length][matrix.length];
+//			distanceMatrices.add(distanceMatrix);
+//		}
 		for (int j = 0; j < matrix.length-1; j++) {
 			for (int j2 = j+1; j2 < matrix.length; j2++) {
 				// indices for next or previous non informative site with different values for j and j2
@@ -249,8 +244,9 @@ public class Main {
 					}
 					distance = countFP/(float)positions.get(indexP);
 				}
-				distanceMatrices.get(0)[j][j2] = distance;
-				distanceMatrices.get(0)[j2][j] = distance;
+//				distanceMatrices.get(0)[j][j2] = distance;
+//				distanceMatrices.get(0)[j2][j] = distance;
+				distanceHolder.addDistance(j, j2, 0, distance);
 				for (int i = 1; i < positions.size(); i++) {
 					selfInformative = false;
 					selfNonInformative = false;
@@ -355,134 +351,28 @@ public class Main {
 //						score = (double)totalCount/(double)(highestPosition - lowestPosition);
 						score = (float)totalCount/(theta*(float)(highestPosition - lowestPosition)/TOTAL_SEQ_LENGTH);
 					}
-					distanceMatrices.get(i)[j][j2] = score;
-					distanceMatrices.get(i)[j2][j] = score;
+//					distanceMatrices.get(i)[j][j2] = score;
+//					distanceMatrices.get(i)[j2][j] = score;
+					distanceHolder.addDistance(j, j2, i, score);
+					
+					
 				}
 			}
 		}
 		System.out.println(" [" + (double) (new Date().getTime() - startDate.getTime()) / 1000
 				+ " Seconds] ");
 	}
-	
-	private void makeUPGMATimeTrees() {
-		System.out.print("Making Guide Trees");
-		Date startDate = new Date();
-		timeTrees = new Tree[positions.size()];
-		for (int i = 0; i < timeTrees.length; i++) {
-			Tree upgmaTree = new Tree();
-			float[][] distanceMatrix = distanceMatrices.get(i);
-			HashMap<Node, List<Short>> clusters = new LinkedHashMap<Node, List<Short>>();
-			HashMap<Set<Node>, Float> distanceMap = new HashMap<Set<Node>, Float>();
-			//initiating clusters
-			for (int j = 0; j < matrix.length; j++) {
-				Node node = new Node();
-				node.setId(String.valueOf(j+1));
-				node.setInfo("0.0");
-				List<Short> taxaCovering = new ArrayList<Short>();
-				taxaCovering.add((short) (j+1));
-				clusters.put(node, taxaCovering);
-			}
-			//
-			while(clusters.keySet().size() > 1){
-				List<Node> clusterNodes = new ArrayList<Node>();
-				clusterNodes.addAll(clusters.keySet());
-				float minDist = Float.MAX_VALUE;
-				Set<Node> nodesToConcat = new HashSet<Node>();
-				Map<Set<Node>, Float> validNodesToContactMap = new HashMap<Set<Node>, Float>();
-				if (clusterNodes.size() == 2) {
-					nodesToConcat.addAll(clusterNodes);
-					minDist = getDistanceOfClusters(clusters.get(clusterNodes.get(0)),clusters.get(clusterNodes.get(1)), distanceMatrix);
-					validNodesToContactMap.put(nodesToConcat, minDist);
-				}else{
-					for (int j = 0; j < clusterNodes.size()-1; j++) {
-						for (int j2 = j+1; j2 < clusterNodes.size(); j2++) {
-							Node node1 = clusterNodes.get(j);
-							Node node2 = clusterNodes.get(j2);
-							Set<Short> combinedSplit = new HashSet<Short>();
-							combinedSplit.addAll(clusters.get(node1));
-							combinedSplit.addAll(clusters.get(node2));
-							if (isCompatible(originalSplits.get(i), combinedSplit)) {
-								Set<Node> pair = new HashSet<Node>();
-								pair.add(node1);
-								pair.add(node2);
-								float distance;
-//								if (combinedSplit.size() > 2 && distanceMap.containsKey(pair)) {
-//									distance = distanceMap.get(pair);
-//								} else {
-									distance = getDistanceOfClusters(clusters.get(node1), clusters.get(node2),
-											distanceMatrix);
-//									if (combinedSplit.size() > 2) {
-//										distanceMap.put(pair, distance);
-//									}
-//								}
-								// System.out.println(distanceMap.size());
-								if (distance <= minDist * (1 + UPGMA_THRESHOD)) {
-									if (distance < minDist) {
-										minDist = distance;
-										List<Set<Node>> iterationList = new ArrayList<Set<Node>>();
-										iterationList.addAll(validNodesToContactMap.keySet());
-										for (Set<Node> set : iterationList) {
-											if (validNodesToContactMap.get(set) > minDist * (1 + UPGMA_THRESHOD)) {
-												validNodesToContactMap.remove(set);
-											}
-										}
-										nodesToConcat.clear();
-										nodesToConcat.add(node1);
-										nodesToConcat.add(node2);
-									}
-									Set<Node> validContact = new HashSet<Node>();
-									validContact.add(node1);
-									validContact.add(node2);
-									validNodesToContactMap.put(validContact, distance);
-								}
-							}
-						}
-					}
-				}
-				LinkedHashMap<Set<Node>, Float> sortedMap = findBestPairs(validNodesToContactMap, clusters, i);
-				while(sortedMap.size() > 0){
-					List<Set<Node>> reversedlist = new ArrayList<Set<Node>>(sortedMap.keySet());
-					nodesToConcat = reversedlist.get(reversedlist.size()-1);
-					if (clusters.keySet().containsAll(nodesToConcat)) {
-						Node parent = new Node();
-						parent.getChildren().addAll(nodesToConcat);
-						List<Short> coveringTaxa = new ArrayList<Short>();
-						parent.setInfo(String.valueOf(sortedMap.get(nodesToConcat)/2));
-						for (Node node : nodesToConcat) {
-							node.setParent(parent);
-							double branchLength = (sortedMap.get(nodesToConcat)/2)-Double.valueOf(node.getInfo());
-							node.setBranchLength(String.valueOf(branchLength));
-							coveringTaxa.addAll(clusters.get(node));
-							clusters.remove(node);
-//							distanceMap.remove(nodesToConcat);
-						}
-						clusters.put(parent, coveringTaxa);
-					}
-					sortedMap.remove(nodesToConcat);
-				}
-			}
-			upgmaTree.setRoot(clusters.keySet().iterator().next());
-			upgmaTree.updateNodes();
-			upgmaTree.updateSplits();
-			timeTrees[i] = upgmaTree;
-			Map<Node, Double> distanceToRootMap = buildDistanceToRootMap(upgmaTree);
-			timeTreeLengths[i] = distanceToRootMap.get(upgmaTree.getTaxa().get(0));
-		}
-		System.out.println(" [" + (double) (new Date().getTime() - startDate.getTime()) / 1000
-				+ " Seconds] ");
-	}
-
 
 	private void makeGuideTrees() {
 		System.out.print("Making Guide Trees");
 		Date startDate = new Date();
-		timeTrees = new Tree[positions.size()];
+		guideTrees = new Tree[positions.size()];
 		Map<Set<Short>, short[]> compatibleRegionMap = new HashMap<Set<Short>, short[]>();
-		for (int i = 0; i < timeTrees.length; i++) {
+		for (int i = 0; i < guideTrees.length; i++) {
 			Tree upgmaTree = new Tree();
-			float[][] distanceMatrix = distanceMatrices.get(i);
+//			float[][] distanceMatrix = distanceMatrices.get(i);
+			float[][] distanceMatrix = distanceHolder.getDistanceMatrixforPosition(i);
 			HashMap<Node, List<Short>> clusters = new LinkedHashMap<Node, List<Short>>();
-//			HashMap<Node, List<DistanceObject>> nodeDistanceObjectMap = new HashMap<Node, List<DistanceObject>>();
 			
 			TreeSet<DistanceObject> distanceSet = new TreeSet<DistanceObject>(new Comparator<DistanceObject>() {
 				@Override
@@ -528,6 +418,7 @@ public class Main {
 						pair[1] = node2;
 						Float distance;
 						distance = getDistanceOfClusters(clusters.get(node1), clusters.get(node2), distanceMatrix);
+//						distance = getDistanceOfClusters(clusters.get(node1), clusters.get(node2), i);
 						DistanceObject distanceObject = new DistanceObject();
 						distanceObject.setNodes(pair);
 						distanceObject.setDistance(distance);
@@ -623,6 +514,7 @@ public class Main {
 //					}
 //					if (isCompatible(newCovering, originalSplits.get(i))) {
 						Float newDistance = getDistanceOfClusters(coveringTaxa, clusters.get(node), distanceMatrix);
+//						Float newDistance = getDistanceOfClusters(coveringTaxa, clusters.get(node), i);
 						Node[] newPair = new Node[2];
 						newPair[0] = node;
 						newPair[1] = newNode;
@@ -640,7 +532,7 @@ public class Main {
 			upgmaTree.setRoot(clusters.keySet().iterator().next());
 			upgmaTree.updateNodes();
 			upgmaTree.updateSplits();
-			timeTrees[i] = upgmaTree;
+			guideTrees[i] = upgmaTree;
 			Map<Node, Double> distanceToRootMap = buildDistanceToRootMap(upgmaTree);
 			timeTreeLengths[i] = distanceToRootMap.get(upgmaTree.getTaxa().get(0));
 		}
@@ -656,6 +548,16 @@ public class Main {
 		}
 		return distance/(list.size()*list2.size());
 	}
+	
+//	private float getDistanceOfClusters(List<Short> list, List<Short> list2, int position) {
+//		float distance = 0.0F;
+//		for (Short i : list) {
+//			for (Short j : list2) {
+//				distance += distanceHolder.getdistance(i-1, j-1, position);
+//			}
+//		}
+//		return distance/(list.size()*list2.size());
+//	}
 
 	private List<Integer> getPositionArrayFromMSFile(String url) {
 		List<Integer> positions = new ArrayList<Integer>();
@@ -821,32 +723,41 @@ public class Main {
 			BufferedReader br = new BufferedReader(reader);
 			String line = br.readLine();
 			if (line.matches(".*[2-9].*") || line.contains(".")) {
-				String[] positionStrings = line.split(" ");
-				int maxLength = Integer.MIN_VALUE;
-				if (positionStrings[0].contains(".")) {
-					for (int i = 0; i < positionStrings.length; i++) {
-						if (positionStrings[i].length() > maxLength) {
-							maxLength = positionStrings[i].length();
+				if (TOTAL_SEQ_LENGTH == 0) {
+					String[] positionStrings = line.split(" ");
+					int maxLength = Integer.MIN_VALUE;
+					if (positionStrings[0].contains(".")) {
+						for (int i = 0; i < positionStrings.length; i++) {
+							if (positionStrings[i].length() > maxLength) {
+								maxLength = positionStrings[i].length();
+							}
+						}
+						for (int i = 0; i < positionStrings.length; i++) {
+							double pos = Double.valueOf(positionStrings[i])*Math.pow(10,(maxLength-2));
+							positions.add((int) pos);
+						}
+					}else{
+						for (int i = 0; i < positionStrings.length; i++) {
+							positions.add(Integer.valueOf(positionStrings[i]));
 						}
 					}
-					for (int i = 0; i < positionStrings.length; i++) {
-						double pos = Double.valueOf(positionStrings[i])*Math.pow(10,(maxLength-2));
-						positions.add((int) pos);
+					if (TOTAL_SEQ_LENGTH == 0) {
+						TOTAL_SEQ_LENGTH = positions.get(positions.size()-1)-positions.get(0)+1;
 					}
+					List<Integer> temPositions = new ArrayList<Integer>();
+					for (int i = 0; i < positions.size(); i++) {
+						if (!indicesToRemove.contains(i)) {
+							temPositions.add(positions.get(i));
+						}
+					}
+					positions.clear();
+					positions.addAll(temPositions);
 				}else{
-					for (int i = 0; i < positionStrings.length; i++) {
-						positions.add(Integer.valueOf(positionStrings[i]));
+					String[] positionStrings = line.split(" ");
+					for (String string : positionStrings) {
+						positions.add((int) (Float.valueOf(string) * TOTAL_SEQ_LENGTH));
 					}
 				}
-				TOTAL_SEQ_LENGTH = positions.get(positions.size()-1)-positions.get(0)+1;
-				List<Integer> temPositions = new ArrayList<Integer>();
-				for (int i = 0; i < positions.size(); i++) {
-					if (!indicesToRemove.contains(i)) {
-						temPositions.add(positions.get(i));
-					}
-				}
-				positions.clear();
-				positions.addAll(temPositions);
 			}else {
 				for (int i = 0; i < localTrees.length; i++) {
 					positions.add((i+1)*10);
@@ -905,7 +816,7 @@ public class Main {
 		int notShareCounter = 0;
 		for (int i = 0; i < localTrees.length; i++) {
 			Tree localTree = localTrees[i];
-			Tree timeTree = timeTrees[i];
+//			Tree timeTree = timeTrees[i];
 			Tree trueTree = trueTrees[i];
 			Set<Set<Short>> realTrueSplits = new HashSet<Set<Short>>();
 			Set<Set<Short>> realTimeSplits = new HashSet<Set<Short>>();
@@ -929,13 +840,13 @@ public class Main {
 			}
 			numTotalInfered += realLocalSplits.size();
 			
-			for (Set<Short> split : timeTree.getSplits()) {
-				if (1 < split.size()
-						&& split.size() < timeTree.getRoot().getSplit().size() - 1
-						&& !realTimeSplits.contains(reverseSplit(split))) {
-					realTimeSplits.add(split);
-				}
-			}
+//			for (Set<Short> split : timeTree.getSplits()) {
+//				if (1 < split.size()
+//						&& split.size() < timeTree.getRoot().getSplit().size() - 1
+//						&& !realTimeSplits.contains(reverseSplit(split))) {
+//					realTimeSplits.add(split);
+//				}
+//			}
 			
 			Set<Set<Short>> tmpLocalSplit = new HashSet<Set<Short>>();
 			Set<Set<Short>> tmpTimeSplit = new HashSet<Set<Short>>();
@@ -1018,7 +929,7 @@ public class Main {
 		int notShareCounter = 0;
 		for (int i = 0; i < localTrees.length; i++) {
 			Tree localTree = localTrees[i];
-			Tree timeTree = timeTrees[i];
+			Tree timeTree = guideTrees[i];
 			Tree trueTree = trueTrees[i];
 			Set<Set<Short>> realTrueClades = new HashSet<Set<Short>>();
 			Set<Set<Short>> realTimeClades = new HashSet<Set<Short>>();
@@ -1278,13 +1189,13 @@ public class Main {
 		}
 	}
 	
-	private void timeSplitRule() {
+	private void guideTreeSplitsRule() {
 		System.out.print("Adding Guide Tree Splits");
 		Date startDate = new Date();
-		for (int i = 0; i < timeTrees.length; i++) {
-			Tree tree = timeTrees[i];
+		for (int i = 0; i < guideTrees.length; i++) {
+			Tree tree = guideTrees[i];
 			for (Set<Short> split : tree.getSplits()) {
-				addSplitTooTree(i, localTrees[i], split, false, false, true);
+				addSplitTooTree(i, localTrees[i], split, false, false, false);
 			}
 		}
 		System.out.println(" [" + (double) (new Date().getTime() - startDate.getTime()) / 1000
@@ -1450,7 +1361,7 @@ public class Main {
 						for (Set<Short> prevSplit : prevSplitSet) {
 							if (!isCompatible(split, prevSplit)) {
 								if (isCompatible(split, localTrees[i])
-										&& isCompatible(split, timeTrees[i])) {
+										&& isCompatible(split, guideTrees[i])) {
 									addedSplits.add(split);
 									splitsToRemove.add(prevSplit);
 								}
@@ -1545,7 +1456,7 @@ public class Main {
 						for (Set<Short> prevSplit : prevSplitSet) {
 							if (!isCompatible(split, prevSplit)) {
 								if (isCompatible(split, localTrees[i])
-										&& isCompatible(split, timeTrees[i])) {
+										&& isCompatible(split, guideTrees[i])) {
 									addedSplits.add(split);
 									splitsToRemove.add(prevSplit);
 								}
@@ -1565,7 +1476,7 @@ public class Main {
 			Set<Set<Short>> splitSet = splitsToAdd.get(i);
 			for (Set<Short> split : splitSet) {
 //				if (isCompatible(split, timeTrees[i])) {
-				if (timeTrees[i].containsSplit(split)){
+				if (guideTrees[i].containsSplit(split)){
 					addSplitTooTree(i, localTrees[i], split, false, true, false);
 				}
 			}
@@ -1574,11 +1485,12 @@ public class Main {
 				+ " Seconds] ");
 	}
 
-	private int addSplitTooTree(int index, Tree tree, Set<Short> addedSplit,
+	private int addSplitTooTreeOld(int index, Tree tree, Set<Short> addedSplit,
 			boolean propagate, boolean eligibilityCheck, boolean normalPropagation) {
 		int counter = 0;
-		if (!tree.containsSplit(addedSplit)
-				&& !tree.containsSplit(reverseSplit(addedSplit))) {
+		if (tree.containsSplit(addedSplit) || tree.containsSplit(reverseSplit(addedSplit))) {
+			return -1;
+		}else{
 			Set<Short> bestSplit = new HashSet<Short>();
 			bestSplit = tree.getRoot().getSplit();
 			boolean compatible = true;
@@ -1648,10 +1560,11 @@ public class Main {
 		return counter;
 	}
 	
-	private int addSplitTooTreeOnly(int index, Tree tree, Set<Short> addedSplit) {
+	private int addSplitTooTreeOnlyOld(int index, Tree tree, Set<Short> addedSplit) {
 		int counter = 0;
-		if (!tree.containsSplit(addedSplit)
-				&& !tree.containsSplit(reverseSplit(addedSplit))) {
+		if (tree.containsSplit(addedSplit) || tree.containsSplit(reverseSplit(addedSplit))) {
+			return -1;
+		}else{
 			Set<Short> bestSplit = new HashSet<Short>();
 			bestSplit = tree.getRoot().getSplit();
 			boolean compatible = true;
@@ -1706,8 +1619,93 @@ public class Main {
 			}else{
 				return -1;
 			}
-		}else{
+		}
+		return counter;
+	}
+
+	private int addSplitTooTree(int index, Tree tree, Set<Short> addedSplit,
+			boolean propagate, boolean eligibilityCheck, boolean normalPropagation) {
+		int counter = 0;
+		if (tree.containsSplit(addedSplit) || tree.containsSplit(reverseSplit(addedSplit))) {
 			return -1;
+		}else{
+			if (!isCompatible(addedSplit, tree)) {
+				return -1;
+			}else{
+				Set<Short> bestSplit = tree.getBestSplitNode(addedSplit).getSplit();
+				boolean valid = true;
+				if (eligibilityCheck) {
+					valid = isTimeEligible(index, tree, addedSplit);
+				}
+				if (valid) {
+					Node splitNode = tree.getExactNodeForSplit(bestSplit);
+					List<Node> nodesToRemove = new ArrayList<Node>();
+					for (Node child : splitNode.getChildren()) {
+						if (addedSplit.containsAll(child.getSplit()))
+							nodesToRemove.add(child);
+					}
+					int capacity = 0;
+					for (Node node : nodesToRemove) {
+						capacity += node.getSplit().size();
+					}
+					Node newNode = new Node(capacity);
+					newNode.setParent(splitNode);
+					splitNode.getChildren().removeAll(nodesToRemove);
+					splitNode.getChildren().add(newNode);
+					newNode.getChildren().addAll(nodesToRemove);
+					for (Node node : nodesToRemove) {
+						node.setParent(newNode);
+						newNode.addToSplit(node.getSplit());
+					}
+					tree.addNode(newNode);
+					tree.addSplit(newNode.getSplit());
+					counter++;
+					if (propagate) {
+						if (normalPropagation) {
+							counter += propagateSplit(index, addedSplit);
+						}else{
+							counter += propagateSplitHeight(index, addedSplit);
+						}
+					}
+				}
+			}
+		}
+		return counter;
+	}
+	
+	private int addSplitTooTreeOnly(int index, Tree tree, Set<Short> addedSplit) {
+		int counter = 0;
+		if (tree.containsSplit(addedSplit) || tree.containsSplit(reverseSplit(addedSplit))) {
+			return -1;
+		}else{
+			Set<Short> bestSplit = new HashSet<Short>();
+			if (!isCompatible(addedSplit, tree)) {
+				return -1;
+			}else{
+				bestSplit = tree.getBestSplitNode(addedSplit).getSplit();
+				Node splitNode = tree.getExactNodeForSplit(bestSplit);
+				List<Node> nodesToRemove = new ArrayList<Node>();
+				for (Node child : splitNode.getChildren()) {
+					if (addedSplit.containsAll(child.getSplit()))
+						nodesToRemove.add(child);
+				}
+				int capacity = 0;
+				for (Node node : nodesToRemove) {
+					capacity += node.getSplit().size();
+				}
+				Node newNode = new Node(capacity);
+				newNode.setParent(splitNode);
+				splitNode.getChildren().removeAll(nodesToRemove);
+				splitNode.getChildren().add(newNode);
+				newNode.getChildren().addAll(nodesToRemove);
+				for (Node node : nodesToRemove) {
+					node.setParent(newNode);
+					newNode.addToSplit(node.getSplit());
+				}
+				tree.addNode(newNode);
+				tree.addSplit(newNode.getSplit());
+				counter++;
+			}
 		}
 		return counter;
 	}
@@ -1805,25 +1803,25 @@ public class Main {
 		int i = index;
 		double ratio = 0;
 		if (index < root.length - 1) {
-			ratio = Double.valueOf(timeTrees[index + 1].getBestSplitNode(addedSplit).getInfo())/Double.valueOf(timeTrees[index].getBestSplitNode(addedSplit).getInfo());
+			ratio = Double.valueOf(guideTrees[index + 1].getBestSplitNode(addedSplit).getInfo())/Double.valueOf(guideTrees[index].getBestSplitNode(addedSplit).getInfo());
 			index++;
 			while(ratio < 1.5 && ratio > 0.75 && addSplitTooTreeOnly(index, localTrees[index], addedSplit) >= 0){
 				if (index == root.length-1) {
 					break;
 				}
-				ratio = Double.valueOf(timeTrees[index + 1].getBestSplitNode(addedSplit).getInfo())/Double.valueOf(timeTrees[index].getBestSplitNode(addedSplit).getInfo());
+				ratio = Double.valueOf(guideTrees[index + 1].getBestSplitNode(addedSplit).getInfo())/Double.valueOf(guideTrees[index].getBestSplitNode(addedSplit).getInfo());
 				index++;
 			}
 		}
 		index = i;
 		if (index > 0) {
-			ratio = Double.valueOf(timeTrees[index - 1].getBestSplitNode(addedSplit).getInfo())/Double.valueOf(timeTrees[index].getBestSplitNode(addedSplit).getInfo());
+			ratio = Double.valueOf(guideTrees[index - 1].getBestSplitNode(addedSplit).getInfo())/Double.valueOf(guideTrees[index].getBestSplitNode(addedSplit).getInfo());
 			index--;
 			while(ratio < 1.5 && ratio > 0.75 && addSplitTooTreeOnly(index, localTrees[index], addedSplit) >= 0){
 				if (index == 0) {
 					break;
 				}
-				ratio = Double.valueOf(timeTrees[index - 1].getBestSplitNode(addedSplit).getInfo())/Double.valueOf(timeTrees[index].getBestSplitNode(addedSplit).getInfo());
+				ratio = Double.valueOf(guideTrees[index - 1].getBestSplitNode(addedSplit).getInfo())/Double.valueOf(guideTrees[index].getBestSplitNode(addedSplit).getInfo());
 				index--;
 			}
 		}
@@ -1858,7 +1856,7 @@ public class Main {
 		int i = index;
 		if (index < root.length - 1) {
 			index++;
-			while(timeTrees[index].containsSplit(addedSplit) && addSplitTooTreeOnly(index, localTrees[index], addedSplit) >= 0){
+			while(guideTrees[index].containsSplit(addedSplit) && addSplitTooTreeOnly(index, localTrees[index], addedSplit) >= 0){
 				if (index == root.length-1) {
 					break;
 				}
@@ -1868,7 +1866,7 @@ public class Main {
 		index = i;
 		if (index > 0) {
 			index--;
-			while(timeTrees[index].containsSplit(addedSplit) && addSplitTooTreeOnly(index, localTrees[index], addedSplit) >= 0){
+			while(guideTrees[index].containsSplit(addedSplit) && addSplitTooTreeOnly(index, localTrees[index], addedSplit) >= 0){
 				if (index == 0) {
 					break;
 				}
@@ -1986,7 +1984,7 @@ public class Main {
 	private void buildNewRoot() {
 		System.out.println("Assigning Local Tree roots");
 		for (int j = 0; j < matrix[0].length; j++) {
-			Tree timeTree = timeTrees[j];
+			Tree timeTree = guideTrees[j];
 			Set<Short> zeroSplit = new HashSet<Short>();
 			Set<Short> oneSplit = new HashSet<Short>();
 			zeroSplit.addAll(reverseSplit(originalSplits.get(j)));
@@ -2007,11 +2005,11 @@ public class Main {
 		System.out.print("Incompatible Region Rule");
 		Date startDate = new Date();
 		int counter = 0;
-		for (int i = 0; i < timeTrees.length - 1; i++) {
+		for (int i = 0; i < guideTrees.length - 1; i++) {
 			Set<Short> split1 = originalSplits.get(i);
 			if (!split1.isEmpty()) {
 				HashMap<Set<Short>, Integer> passedSplits = new LinkedHashMap<Set<Short>, Integer>();
-				for (int j = i + 1; j < timeTrees.length; j++) {
+				for (int j = i + 1; j < guideTrees.length; j++) {
 					Set<Short> split2 = originalSplits.get(j);
 					if (!split2.isEmpty()) {
 						if (split1.equals(split2)
@@ -2062,9 +2060,9 @@ public class Main {
 		Set<Short> split2 = originalSplits.get(j);
 		int counter = 0;
 		for (int k = i+1; k < j; k++) {
-			if (timeTrees[k].containsSplit(split1)) {
+			if (guideTrees[k].containsSplit(split1)) {
 				counter += addSplitTooTree(k, localTrees[k], split1, false, false, true);
-			}else if (timeTrees[k].containsSplit(split2)){
+			}else if (guideTrees[k].containsSplit(split2)){
 				counter += addSplitTooTree(k, localTrees[k], split2, false, false, true);
 			}
 		}
@@ -2074,7 +2072,7 @@ public class Main {
 	private void RefineNonBinaryNodes() {
 		for (int i = 0; i < localTrees.length; i++) {
 			Tree tree = localTrees[i];
-			Tree upgmaTree = timeTrees[i];
+			Tree upgmaTree = guideTrees[i];
 			List<Node> nodesToBreak = new ArrayList<Node>();
 			for (Node node : tree.getNodes()) {
 				if (node.getChildren().size() > 2){
@@ -2216,7 +2214,7 @@ public class Main {
 				double height = 0.0;
 				if (split.size() != 1) {
 					for (int i = r[0]; i <= r[1]; i++) {
-						height += Double.valueOf(timeTrees[i].getBestSplitNode(split).getInfo());
+						height += Double.valueOf(guideTrees[i].getBestSplitNode(split).getInfo());
 					}
 				}
 				height = height/(r[1]-r[0]+1);
@@ -2224,7 +2222,7 @@ public class Main {
 			}
 			for (int i = r[0]; i <= r[1]; i++) {
 				tree = localTrees[i];
-				Tree timeTree = timeTrees[i];
+				Tree timeTree = guideTrees[i];
 				double multiplier = timeTreeLengths[i]/localTreeLengths[i];
 				for (Node node : timeTree.getNodes()) {
 					double branchLength = Double.valueOf(node.getBranchLength());
@@ -2282,34 +2280,15 @@ public class Main {
 
 
 	private Tree[] buildLocalTrees() {
-		logMemory();
 		fullyCompatibleWithCheckNew();
-		System.gc();
-		logMemory();
 		fullyCompatibleRegionRuleNew();
-		System.gc();
-		logMemory();
 		timeSplitOverrideRule();
-		System.gc();
-		logMemory();
 		propagationRuleNew();
-		System.gc();
-		logMemory();
 		propagationHeightRule();
-		System.gc();
-		logMemory();
 		propagationRule();
-		System.gc();
-		logMemory();
-		timeSplitRule();
-		System.gc();
-		logMemory();
+		guideTreeSplitsRule();
 		propagationRule();
-		System.gc();
-		logMemory();
 		RefineNonBinaryNodes();
-		System.gc();
-		logMemory();
 		return localTrees;
 	}
 
@@ -2317,22 +2296,23 @@ public class Main {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		if (args.length == 0) {
+//		if (args.length == 0) {
 //			String file = "15x20x720x720-ms-1";
-//			String file = "30x20x720x720-ms-1";
-//			String file = "100x20x720x720-ms-1";
-			String file = "200x20x720x720-ms-1";
-//			String file = "500x20x720x720-ms-1";
-//			String file = "1000x20x720x720-ms-1";
-
-			String url = "res/" + file + ".dat";
-			String urlMs = "res/" + file + ".trace";
-
-//			args = new String[] {url};
-			args = new String[] {url, urlMs};
-//			args = new String[] {"-t", url, urlMs};
-//			args = new String[] {"res/test.dat"};
-		}
+////			String file = "30x20x720x720-ms-1";
+////			String file = "100x20x720x720-ms-1";
+////			String file = "200x20x720x720-ms-1";
+////			String file = "500x20x720x720-ms-1";
+////			String file = "1000x20x720x720-ms-1";
+//
+//			String url = "res/" + file + ".dat";
+//			String urlMs = "res/" + file + ".trace";
+//
+////			args = new String[] {url};
+//			args = new String[] {"-l", "1000000", url, urlMs};
+////			args = new String[] {"-h"};
+////			args = new String[] {"-t", url, urlMs};
+////			args = new String[] {"res/test.dat"};
+//		}
 		new Main(args);
 	}
 }
