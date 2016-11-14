@@ -7,16 +7,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import main.Main;
 import tools.Util;
 
 public class Tree {
 	private Node root;
 	private List<Node> nodes = new ArrayList<Node>();
-	private Set<Set<Integer>> splits = new HashSet<Set<Integer>>();
+	private Set<Set<Short>> splits = new HashSet<Set<Short>>();
 	private String string = "";
 	private boolean updateFlag = true;
-	private HashMap<Node, Double> nodeLengthMap;
-
+	
+	public Tree() {
+	}
+	
 	public Node getRoot() {
 		return root;
 	}
@@ -33,32 +36,49 @@ public class Tree {
 		this.nodes = nodes;
 	}
 
-	public Set<Set<Integer>> getSplits() {
+	public Set<Set<Short>> getSplits() {
 		return splits;
 	}
 
-	public void setSplits(Set<Set<Integer>> splits) {
-		this.splits = splits;
+	public void addSplit(Set<Short> split){
+		if (Node.generalSplitMap.containsKey(split)) {
+			splits.add(Node.generalSplitMap.get(split));
+		}else{
+			try {
+				throw new Exception("Split does not exist in the map");
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	public void addNode(Node node){
+		nodes.add(node);
+	}
+	
+	public boolean containsSplit(Set<Short> split){
+		return splits.contains(split);
 	}
 	
 	public void updateSplits(){
 		updateSplit(root);
 		splits.clear();
 		for (Node node : nodes) {
-			splits.add(node.getSplit());
+			addSplit(node.getSplit());
 		}
 	}
 
 	private void updateSplit(Node node) {
 		if (node.getChildren().isEmpty()) {
-			node.getSplit().add(Integer.valueOf(node.getId()));
+			node.addToSplit(Short.valueOf(node.getId()));
 			return;
 		}
-		node.getSplit().clear();
+		Set<Short> split = new HashSet<Short>();
 		for (Node child : node.getChildren()) {
 			updateSplit(child);
-			node.getSplit().addAll(child.getSplit());
+			split.addAll(child.getSplit());
 		}
+		node.setSplit(split);
 	}
 	
 	public List<Node> getTaxa(){
@@ -71,7 +91,7 @@ public class Tree {
 		return taxa;
 	}
 
-	public Node getExactNodeForSplit(Set<Integer> bestSplit) {
+	public Node getExactNodeForSplit(Set<Short> bestSplit) {
 		for (Node node : nodes) {
 			if (node.getSplit().equals(bestSplit)) {
 				if (node.getChildren().size() != 1) {
@@ -126,10 +146,10 @@ public class Tree {
 		}		
 	}
 	
-	public Node getBestSplitNode(Set<Integer> split) {
+	public Node getBestSplitNode(Set<Short> split) {
 		Node bestNode = root;
 		for (Node node : nodes) {
-			Set<Integer> nodeSplit = node.getSplit();
+			Set<Short> nodeSplit = node.getSplit();
 			if (node.getSplit().equals(split))
 			{
 				return node;
@@ -143,96 +163,22 @@ public class Tree {
 		return bestNode;
 	}
 	
-	public void cleanUp(){
-		boolean done = false;
-		while(!done){
-			List<Node> nodesToRemove = new ArrayList<Node>();
-			for (Node node : nodes) {
-				if (node.getId().equals("5318")) {
-					System.err.println();
-				}
-				if (node.isLeaf() && !node.getId().contains("n")) {
-					nodesToRemove.add(node);
-					node.getParent().getChildren().remove(node);
-					if (node.getParent2()!= null) {
-						node.getParent2().getChildren().remove(node);
-					}
-					break;
-				}
-				if (node.getChildren().size() == 1){
-					if (node.getParent() == null) {
-						nodesToRemove.add(node);
-						root = node.getChildren().get(0);
-						break;
-					}else{
-						Node child = node.getChildren().get(0);
-						child.setParent(node.getParent());
-						node.getParent().getChildren().remove(node);
-						node.getParent().getChildren().add(child);
-						nodesToRemove.add(node);
-						break;
-					}
-				}
-			}
-			if (nodesToRemove.size() == 0) {
-				done = true;
-			}else{
-				nodes.removeAll(nodesToRemove);
-			}
-		}
-	}
-	
-	public double getSplitLength(Set<Integer> split){
-		if (nodeLengthMap == null) {
-			nodeLengthMap = new HashMap<Node, Double>();
-		}
-		Node bestNode = root;
-		for (Node node : nodes) {
-			if (node.getSplit().containsAll(split)) {
-				if (node.getSplit().size() < bestNode.getSplit().size()) {
-					bestNode = node;
-				}
-			}
-		}
-		double length = getLengthOfNode(bestNode);
-		return length;
-	}
-
-	private double getLengthOfNode(Node node) {
-		if (node.isLeaf()) {
-			return 0;
-		}
-		if (nodeLengthMap.get(node) != null) {
-			return nodeLengthMap.get(node);
-		}else{
-			double longest = 0;
-			for (Node child : node.getChildren()) {
-				double childLength = Double.valueOf(child.getBranchLength()) + getLengthOfNode(child);
-				if (childLength > longest) {
-					longest = childLength;
-				}
-			}
-			nodeLengthMap.put(node, longest);
-			return longest;
-		}
-	}
-	
 	public void setUpdateFlag(boolean updateFlag) {
 		this.updateFlag = updateFlag;
 	}
 	
-	public List<Set<Integer>> getClades(){
-		List<Set<Integer>> list = new ArrayList<Set<Integer>>();
+	public List<Set<Short>> getClades(){
+		List<Set<Short>> list = new ArrayList<Set<Short>>();
 		getClade(root, list);
 		return list;
 	}
 	
-	public Set<Integer> getClade(Node node, List<Set<Integer>> list){
+	public Set<Short> getClade(Node node, List<Set<Short>> list){
 		if (node.getChildren().size() == 0) {
 			list.add(node.getSplit());
 			return node.getSplit();
 		}
-		Set<Integer> clade = new HashSet<Integer>();
+		Set<Short> clade = new HashSet<Short>();
 		for (Node child : node.getChildren()) {
 			clade.addAll(getClade(child, list));
 		}

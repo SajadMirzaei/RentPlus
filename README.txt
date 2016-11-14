@@ -26,6 +26,7 @@ SYNOPSIS     : java -jar RentPlus.jar [<options>] <data-filename> [<ms-file-name
 
 OPTIONS      :  (Optional) use "-t" to estimate branch lengths for local trees.
 						   use "-h" or "--help" to show hints.
+                           use "-l <sequence length>" if you use proportional positions (between 0-1).
 
 DATA FILE    :  The first line of the data file contains the SNP site positions separated by a space.
 				Positions can be either doubles between 0 and 1 or integers (exact site positions). 
