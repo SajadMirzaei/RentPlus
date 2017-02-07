@@ -124,6 +124,9 @@ public class Main {
 		timeTreeLengths = new double[matrix[0].length];
 		trueTreeLengths = new double[matrix[0].length];
 		localTreeLengths = new double[matrix[0].length];
+		if (WINDOW_SIZE > matrix[0].length) {
+			WINDOW_SIZE = matrix[0].length;
+		}
 		
 		System.out.println("Reading positions");
 		positions = getPositionArrayFromInputFile(argsList.get(0));
@@ -162,6 +165,7 @@ public class Main {
 			getDistanceMatricesForTrueTrees();
 	    	compareAllTrees(positions);
 	    	System.out.println("-----------------------");
+	    	outputTreesSeperate(trueTrees,outputName, "True");
 		}else{
 			outputInferredTrees(positions);
 		}
@@ -232,9 +236,9 @@ public class Main {
 				float distance = 0;
 				if (countWIP > 0 || selfInformative){
 					if (selfInformative || selfNonInformative) {
-						distance = (countWP+1)/(float)positions.get(WINDOW_SIZE);
+						distance = (countWP+1)/(float)positions.get(WINDOW_SIZE-1);
 					}else{
-						distance = (countWP)/(float)positions.get(WINDOW_SIZE);
+						distance = (countWP)/(float)positions.get(WINDOW_SIZE-1);
 					}
 				}else{
 					if (selfNonInformative) {
@@ -742,7 +746,7 @@ public class Main {
 						}
 					}
 					if (TOTAL_SEQ_LENGTH == 0) {
-						TOTAL_SEQ_LENGTH = positions.get(positions.size()-1)-positions.get(0)+1;
+						TOTAL_SEQ_LENGTH = positions.get(positions.size()-1)+1;
 					}
 					List<Integer> temPositions = new ArrayList<Integer>();
 					for (int i = 0; i < positions.size(); i++) {
@@ -2311,7 +2315,8 @@ public class Main {
 //			args = new String[] {"-l", "1000000", url, urlMs};
 ////			args = new String[] {"-h"};
 ////			args = new String[] {"-t", url, urlMs};
-////			args = new String[] {"res/test.dat"};
+//			args = new String[] {"res/example-ms-n15-t15-r10-2.dat"};
+//			args = new String[] {"res/test2.txt"};
 //		}
 		new Main(args);
 	}
