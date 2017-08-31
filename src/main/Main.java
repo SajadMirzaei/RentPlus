@@ -643,7 +643,7 @@ public class Main {
 	}
 	
 	private  short[] findCompatibleRegion(Node[] nodes, Set<Short> combinedSplit, int i){
-		short index = 1;
+		int index = 1;
 		short minIndex = (short) i;
 		short maxIndex = (short) i;
 		while(i-index >= 0 && index < UPGMA_RANGE_CHECK*positions.size()){
@@ -2318,6 +2318,7 @@ public class Main {
 //			args = new String[] {"res/example-ms-n15-t15-r10-2.dat"};
 //			args = new String[] {"res/test2.txt"};
 //		}
+//		args = new String[] {"res/seqfile.rentFormat"};
 		new Main(args);
 	}
 }
